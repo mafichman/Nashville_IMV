@@ -92,7 +92,16 @@ full_table <- rbind(acs2010, acs2020)
 
 ggplot(full_table)+
   geom_sf(aes(fill = median_income_est),
-          color = "transparent")+
+          color = "transparent",
+          alpha = 0.8)+
+  scale_fill_viridis()+
+  facet_wrap(~year)+
+  mapTheme
+
+ggplot(full_table)+
+  geom_sf(aes(fill = total_pop_est),
+          color = "transparent",
+          alpha = 0.8)+
   scale_fill_viridis()+
   facet_wrap(~year)+
   mapTheme
