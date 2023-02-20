@@ -105,3 +105,8 @@ ggplot(full_table)+
   scale_fill_viridis()+
   facet_wrap(~year)+
   mapTheme
+
+full_table %>%
+  as.data.frame() %>%
+  group_by(year) %>%
+  summarize(total_pop = sum(total_pop_est))
