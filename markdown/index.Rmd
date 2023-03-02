@@ -1,0 +1,36 @@
+---
+title: "Nashville Venues Project Data Portal"
+author: "PennPraxis"
+date: "3/2/2023"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_download: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Introduction
+
+What Is This Document
+
+**Michael Fichman**
+
+*University of Pennsylvania Weitzman School of Design*
+
+*Lecturer, Department of City and Regional Planning*
+
+*Research Associate, PennPraxis*
+
+# 2. Data Sources
+
+# 3. Exploratory Analysis
+
+Let's start with a searchable database of business licenses and properties for the CST team
+
+Alongside a mapview object where you can search around and find things (although mapview is not dynamic so there's no search bar functionality)
+
+# 4. Venue Database
