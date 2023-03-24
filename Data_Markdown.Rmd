@@ -9,7 +9,149 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Start by loading in packages
 ```{r}
+library(tidyverse)
+library(sf)
+library(RSocrata)
+library(tidycensus)
+library(tigris)
+library(viridis)
+library(viridisLite)
+library(mapview)
+library(dplyr)
+library(foreign)
+```
 
+First I'll look at census data and chamber of commerce locations
+
+#Census data
+```{r}
+API_key = "c03e04624fa724c446d835b3c313e3f11aa54c2d" #Sofia Fasullo's API key
+census_api_key(API_key, overwrite = TRUE)
+
+acs_variable_list.2020 <- load_variables(2020, #year
+                                         "acs5")
+
+## Set up a list of variables to grab
+acs_vars <- c("B01001_001E", # ACS total Pop estimate
+              "B06011_001E") # Median income in past 12 months
+
+## Grab some data for Chester County
+
+acs2020 <- get_acs(geography = "tract",
+                   year = 2020,
+                   variables = acs_vars,
+                   geometry = TRUE,
+                   state = "TN",
+                   county = "Davidson",
+                   output = "wide") %>%
+  select(GEOID, NAME, acs_vars) %>%
+  rename(total_pop_est = B01001_001E,
+         median_income_est = B06011_001E) %>%
+  mutate(year = 2020)
+
+
+## Let's try getting 2010 data
+
+acs2010 <- get_acs(geography = "tract",
+                   year = 2010,
+                   variables = acs_vars,
+                   geometry = TRUE,
+                   state = "TN",
+                   county = "Davidson",
+                   output = "wide") %>%
+  select(GEOID, NAME, acs_vars) %>%
+  rename(total_pop_est = B01001_001E,
+         median_income_est = B06011_001E) %>%
+  mutate(year = 2010)
+
+
+full_table <- rbind(acs2010, acs2020)
+
+```
+
+chamber of commerce music venue data load
+```{r}
+cc_venues <- read_sf("~/GitHub/Nashville_IMV/data/chamber_venues/chamber_venues_2020.geojson")
+
+```
+
+NOTE: possiblility to streamline this system in the future by reading .R files into this markdown rather than having all this code re-written
+
+rename data so generic names from various files are given specific names in this 
+```{r}
+#adding an id column for ease of joins
+full_table$id = seq(1:length(full_table$GEOID))
+census_data = full_table
+```
+
+#Data communication
+Idea is 2 different "big" tables: one organized by census tract and one organized by venue (for ease of different access)
+
+##First, organize by census tract area:
+#Organizing census data:
+```{r}
+#organize census data across years
+
+#which census tracts are not redrawn? which do we need to "massage" to get the 2010-2020 data to talk within the same spacial bound
+
+census_data$preserved = duplicated(census_data$GEOID)
+#change_CT = census_data %>% distinct(NAME, .keep_all = TRUE)
+CT_changed = census_data %>% filter(preserved==FALSE)
+CT_preserved = census_data %>% filter(preserved ==TRUE)
+
+#In 2020, there were 174 Census tracts (length(acs2020$GEOID)). 143 of those were the same geography as in 2010 (length(CT_preserved$GEOID)). So I will spatially join the ones that were redrawn. I will go by the 2020 geography
+#143 of the 161 2010 census tracts were preserved into 2020. So 18 2010 census tracts were redrawn into 31 2020 census tracts, which makes sense because the population increased.
+#I will join the 2010 demographics as a new column into the 2020 census tracts, that way we can do analysis accross time, and our data is spatially consolidated. It will be more difficult for the tracts were redrawn.
+
+#First, preparing the tracts that were not preserved by dropping geometry to do an easy join by the GEOID and name of the tract to match up the years, and then adding back the geometry and deleting unwanted columns
+CT_preserved_2020_nosf = st_drop_geometry(CT_preserved) %>% select(-year) #all the years are 2020 so it doesn't matter
+colnames(CT_preserved_2020_nosf) = c("GEOID", "NAME", "tot_pop_est_2020", "med_inc_est_2020","id","preserved")
+
+CT_changed_and_preserved = st_drop_geometry(CT_changed)
+colnames(CT_changed_and_preserved ) = c("GEOID", "NAME", "tot_pop_est", "med_inc_est","year","id","preserved") #need to know the year because there are 2 different years
+
+median_table = inner_join(CT_preserved_2020_nosf,CT_changed_and_preserved ,by=c("GEOID","NAME"))
+
+#cleaning up the table to remove unneeded columns
+CT_preserved_both_years = median_table %>% select(-c(id.x,preserved.x,year,id.y,preserved.y))
+colnames(CT_preserved_both_years) = c("GEOID","NAME","tot_pop_est_2020","med_inc_est_2020","tot_pop_est_2010","med_inc_est_2010")
+
+#adding back geometry
+joiner = CT_preserved %>% select(GEOID,NAME,geometry)
+CT_preserved_both_years = left_join(CT_preserved_both_years, joiner,by=c("GEOID","NAME")) %>% st_as_sf()
+
+```
+
+
+```{r}
+#all the changed census tracts, 18 2010 and 31 2020
+
+median_table2 = anti_join(CT_changed_and_preserved,CT_preserved_2020_nosf,by=c("GEOID","NAME"))
+CT_changed_2010 = median_table2 %>% filter(year==2010) %>% select(-c(id,preserved)) #keeping year column for now as safety check
+colnames(CT_changed_2010) = c("GEOID","NAME","tot_pop_est_2010","med_inc_est_2010","year")
+joiner = census_data %>% select(GEOID,NAME,geometry)
+CT_changed_2010 = left_join(CT_changed_2010, joiner,by=c("GEOID","NAME")) %>% select(-year) %>% st_as_sf()
+
+
+CT_changed_2020 = median_table2 %>% filter(year==2020) %>% select(-c(id,preserved))
+colnames(CT_changed_2020) = c("GEOID","NAME","tot_pop_est_2020","med_inc_est_2020","year")
+CT_changed_2020 = left_join(CT_changed_2020, joiner,by=c("GEOID","NAME")) %>% select(-year) %>% st_as_sf()
+
+#now trying to spatially join them. spatial join makes sense because 2020 tracts are contained within 2010 tracts - they're 2010 tracts subdivided to account for denser population. But GEOID and tract names don't show this spatial relationship, so we do a spatial join.
+
+#try50 = st_union(CT_changed_2010, CT_changed_2020)
+#stuck on this spatial anti-dissolve
+```
+#Add venue data to the census geometries
+```{r}
+#first, fun plot
+
+ggplot() +
+  geom_sf(data=CT_preserved_both_years, mapping=aes(fill=tot_pop_est_2020)) +
+  geom_sf(data=cc_venues,mapping=aes(color="#000000"))
+
+#I gotta go to sleep
 ```
 
