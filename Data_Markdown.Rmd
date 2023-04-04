@@ -148,10 +148,36 @@ CT_changed_2020 = left_join(CT_changed_2020, joiner,by=c("GEOID","NAME")) %>% se
 ```{r}
 #first, fun plot
 
+#looks like not all tracts have venues, and some venues are in areas where preserved tracts do not exist
 ggplot() +
   geom_sf(data=CT_preserved_both_years, mapping=aes(fill=tot_pop_est_2020)) +
   geom_sf(data=cc_venues,mapping=aes(color="#000000"))
 
-#I gotta go to sleep
+
+```
+#trying to visualize tracts
+```{r}
+par(mfrow=c(1,2))
+    ggplot() +
+  geom_sf(data=CT_changed_2020, mapping=aes(fill="#000000"))
+
+  ggplot() +
+  geom_sf(data=CT_changed_2010, mapping=aes(fill="#000000")) 
+  
+#can see that the 2010 plots are just dissolves of the 2020 plots
+
+```
+more attemptage
+```{r}
+med_2020 = CT_changed_2020 %>% mutate(tract_num = ifelse(substr(NAME,17,17)==",",substr(NAME,14,16),substr(NAME,14,19))) %>% arrange(tract_num) %>% mutate(area=st_area(CT_changed_2020)) %>% st_drop_geometry() %>%  write.csv("C:/Users/sofia/Documents/GitHub/Nashville_IMV/med_table_2020.csv")
+
+med_2010 = CT_changed_2010 %>% mutate(tract_num = ifelse(substr(NAME,17,17)==",",substr(NAME,14,16),substr(NAME,14,19))) %>% arrange(tract_num) %>% mutate(area=st_area(CT_changed_2010)) %>% st_drop_geometry() %>%  write.csv("C:/Users/sofia/Documents/GitHub/Nashville_IMV/med_table_2010.csv")
+
+#ugh some tracts were consolidated in 2020, others subdivided. Might just do this in excel? I think that's the best option. Might wanna keep geometry and actually calculate area
+
+```
+
+```{r}
+CT_changed_2010 %>% mutate(tract_num = ifelse(substr(NAME,17,17)==",",substr(NAME,14,16),substr(NAME,14,19))) %>% mapview(label="tract_num")
 ```
 
