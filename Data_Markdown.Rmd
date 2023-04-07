@@ -74,7 +74,7 @@ full_table <- rbind(acs2010, acs2020)
 chamber of commerce music venue data load
 ```{r}
 cc_venues <- read_sf("~/GitHub/Nashville_IMV/data/chamber_venues/chamber_venues_2020.geojson")
-
+#what is the 0 capacity?
 ```
 
 NOTE: possiblility to streamline this system in the future by reading .R files into this markdown rather than having all this code re-written
@@ -89,8 +89,59 @@ census_data = full_table
 #Data communication
 Idea is 2 different "big" tables: one organized by census tract and one organized by venue (for ease of different access)
 
-##First, organize by census tract area:
-#Organizing census data:
+#Task 1: join data to parent geography
+```{r}
+council_districts = st_read("https://data.nashville.gov/resource/iw7r-m8qr.geojson") %>% select(council_district, geometry) %>% st_transform(crs=4269)
+
+
+```
+
+```{r}
+census10 = filter(census_data, year==2010)
+census10[is.na(census10)] <- 0
+census10$area10 = st_area(census10)
+census10 = census10 %>% mutate(pop_dens10 = total_pop_est/area10, med_incxpop = median_income_est*total_pop_est)
+#I made distance in square miles, not meters
+council10 = st_join(council_districts,census10) %>% group_by(council_district) %>% summarize(tot_pop10 = sum(total_pop_est), avg_med_inc10 = (sum(med_incxpop)/tot_pop10), avg_dens10 = mean(pop_dens10)*2590000)
+
+
+census20 = filter(census_data, year==2020)
+census20[is.na(census20)] <- 0
+census20$area20 = st_area(census20)
+census20 = census20 %>% mutate(pop_dens20 = total_pop_est/area20, med_incxpop = median_income_est*total_pop_est)
+council20 = st_join(council_districts,census20) %>% group_by(council_district) %>% summarize(tot_pop20 = sum(total_pop_est), avg_med_inc20 = (sum(med_incxpop)/tot_pop20), avg_dens20 = mean(pop_dens20)*2590000)
+
+#parent geography with aggregated census data from both years
+coun_dist = 
+  left_join(st_drop_geometry(council10), st_drop_geometry(council20), by="council_district") %>%
+  left_join(.,council_districts,by="council_district") %>%
+  st_as_sf() %>% 
+  mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1))
+
+
+```
+
+```{r}
+#joining venue data to this
+coun_dist_venues = st_join(coun_dist, st_transform(cc_venues, 4269)) %>% group_by(council_district) %>% 
+  summarize(num_venues = n(), avg_capacity = round(mean(Capacity))) %>% #not sure why NAs are introduced
+  left_join(., st_drop_geometry(coun_dist), by="council_district")
+  
+```
+
+
+```{r}
+cc_venues_dist = st_join(st_transform(cc_venues, 4269),coun_dist)
+
+```
+
+## Task 2 = Make Sense of Administrative Data
+
+
+##Bottom == Irrelevant (messy work trying to join census tracts to each other)
+
+--First, organize by census tract area:
+--Organizing census data:
 ```{r}
 #organize census data across years
 
@@ -103,7 +154,7 @@ CT_preserved = census_data %>% filter(preserved ==TRUE)
 
 #In 2020, there were 174 Census tracts (length(acs2020$GEOID)). 143 of those were the same geography as in 2010 (length(CT_preserved$GEOID)). So I will spatially join the ones that were redrawn. I will go by the 2020 geography
 #143 of the 161 2010 census tracts were preserved into 2020. So 18 2010 census tracts were redrawn into 31 2020 census tracts, which makes sense because the population increased.
-#I will join the 2010 demographics as a new column into the 2020 census tracts, that way we can do analysis accross time, and our data is spatially consolidated. It will be more difficult for the tracts were redrawn.
+#I will join the 2010 demographics as a new column into the 2020 census tracts, that way we can do analysis across time, and our data is spatially consolidated.
 
 #First, preparing the tracts that were not preserved by dropping geometry to do an easy join by the GEOID and name of the tract to match up the years, and then adding back the geometry and deleting unwanted columns
 CT_preserved_2020_nosf = st_drop_geometry(CT_preserved) %>% select(-year) #all the years are 2020 so it doesn't matter
@@ -144,7 +195,7 @@ CT_changed_2020 = left_join(CT_changed_2020, joiner,by=c("GEOID","NAME")) %>% se
 #try50 = st_union(CT_changed_2010, CT_changed_2020)
 #stuck on this spatial anti-dissolve
 ```
-#Add venue data to the census geometries
+--Add venue data to the census geometries
 ```{r}
 #first, fun plot
 
@@ -155,7 +206,7 @@ ggplot() +
 
 
 ```
-#trying to visualize tracts
+--trying to visualize tracts
 ```{r}
 par(mfrow=c(1,2))
     ggplot() +
@@ -167,7 +218,7 @@ par(mfrow=c(1,2))
 #can see that the 2010 plots are just dissolves of the 2020 plots
 
 ```
-more attemptage
+--more attemptage
 ```{r}
 med_2020 = CT_changed_2020 %>% mutate(tract_num = ifelse(substr(NAME,17,17)==",",substr(NAME,14,16),substr(NAME,14,19))) %>% arrange(tract_num) %>% mutate(area=st_area(CT_changed_2020)) %>% st_drop_geometry() %>%  write.csv("C:/Users/sofia/Documents/GitHub/Nashville_IMV/med_table_2020.csv")
 
