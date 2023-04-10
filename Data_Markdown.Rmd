@@ -1,0 +1,152 @@
+---
+title: "Nasville Music Venues Research"
+author: "Sofia Fasullo"
+date: "2023-03-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Start by loading in packages
+```{r}
+library(tidyverse)
+library(sf)
+library(RSocrata)
+library(tidycensus)
+library(tigris)
+library(viridis)
+library(viridisLite)
+library(mapview)
+library(dplyr)
+library(foreign)
+```
+
+First I'll look at census data and chamber of commerce locations
+
+#Census data
+```{r}
+API_key = "c03e04624fa724c446d835b3c313e3f11aa54c2d" #Sofia Fasullo's API key
+census_api_key(API_key, overwrite = TRUE)
+
+acs_variable_list.2020 <- load_variables(2020, #year
+                                         "acs5")
+
+## Set up a list of variables to grab
+acs_vars <- c("B01001_001E", # ACS total Pop estimate
+              "B06011_001E") # Median income in past 12 months
+
+## Grab some data for Chester County
+
+acs2020 <- get_acs(geography = "tract",
+                   year = 2020,
+                   variables = acs_vars,
+                   geometry = TRUE,
+                   state = "TN",
+                   county = "Davidson",
+                   output = "wide") %>%
+  select(GEOID, NAME, acs_vars) %>%
+  rename(total_pop_est = B01001_001E,
+         median_income_est = B06011_001E) %>%
+  mutate(year = 2020)
+
+
+## Let's try getting 2010 data
+
+acs2010 <- get_acs(geography = "tract",
+                   year = 2010,
+                   variables = acs_vars,
+                   geometry = TRUE,
+                   state = "TN",
+                   county = "Davidson",
+                   output = "wide") %>%
+  select(GEOID, NAME, acs_vars) %>%
+  rename(total_pop_est = B01001_001E,
+         median_income_est = B06011_001E) %>%
+  mutate(year = 2010)
+
+
+full_table <- rbind(acs2010, acs2020)
+
+```
+
+chamber of commerce music venue data load
+```{r}
+cc_venues <- read_sf("~/GitHub/Nashville_IMV/data/chamber_venues/chamber_venues_2020.geojson") %>% st_transform(4269)
+#what is the 0 capacity?
+```
+
+NOTE: possiblility to streamline this system in the future by reading .R files into this markdown rather than having all this code re-written
+
+rename data so generic names from various files are given specific names in this 
+```{r}
+#adding an id column for ease of joins
+full_table$id = seq(1:length(full_table$GEOID))
+census_data = full_table
+```
+
+#Data communication
+Idea is 2 different "big" tables: one organized by census tract and one organized by venue (for ease of different access)
+
+#Task 1: join data to parent geography
+```{r}
+council_districts = st_read("https://data.nashville.gov/resource/iw7r-m8qr.geojson") %>% select(council_district, geometry) %>% st_transform(crs=4269)
+
+
+```
+
+```{r}
+census10 = filter(census_data, year==2010)
+census10[is.na(census10)] <- 0
+census10$area10 = st_area(census10)
+census10 = census10 %>% mutate(pop_dens10 = total_pop_est/area10, med_incxpop = median_income_est*total_pop_est)
+#I made distance in square miles, not meters
+council10 = st_join(council_districts,census10) %>% group_by(council_district) %>% summarize(tot_pop10 = sum(total_pop_est), avg_med_inc10 = (sum(med_incxpop)/tot_pop10), avg_dens10 = mean(pop_dens10)*2590000)
+
+
+census20 = filter(census_data, year==2020)
+census20[is.na(census20)] <- 0
+census20$area20 = st_area(census20)
+census20 = census20 %>% mutate(pop_dens20 = total_pop_est/area20, med_incxpop = median_income_est*total_pop_est)
+council20 = st_join(council_districts,census20) %>% group_by(council_district) %>% summarize(tot_pop20 = sum(total_pop_est), avg_med_inc20 = (sum(med_incxpop)/tot_pop20), avg_dens20 = mean(pop_dens20)*2590000)
+
+#parent geography with aggregated census data from both years
+coun_dist = 
+  left_join(st_drop_geometry(council10), st_drop_geometry(council20), by="council_district") %>%
+  left_join(.,council_districts,by="council_district") %>%
+  st_as_sf() %>% 
+  mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1))
+
+
+```
+
+```{r}
+#joining venue data to this
+coun_dist_venues = st_join(coun_dist, cc_venues) %>% group_by(council_district) %>% 
+  summarize(num_venues = n(), avg_capacity = round(mean(Capacity))) %>% #not sure why NAs are introduced
+  left_join(., st_drop_geometry(coun_dist), by="council_district")
+  
+```
+
+
+```{r}
+cc_venues_dist = st_join(cc_venues,coun_dist)
+
+```
+
+## Task 2 = Make Sense of Administrative Data
+
+```{r}
+#data has APN and address
+LIS23 = st_read("C:/Users/sofia/Documents/GitHub/Nashville_IMV/data/metro/Prop_LIS_Jan_2023/Prop_LIS_Jan_2023.shp") %>% st_transform(4269)
+parcels = st_read("C:/Users/sofia/Documents/GitHub/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4269)
+```
+
+```{r}
+#attempt to chose the parcels that match with the venues
+
+venuesxparcels = st_intersects(cc_venues, LIS23)
+```
+
+
