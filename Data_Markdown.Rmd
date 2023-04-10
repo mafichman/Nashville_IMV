@@ -73,7 +73,7 @@ full_table <- rbind(acs2010, acs2020)
 
 chamber of commerce music venue data load
 ```{r}
-cc_venues <- read_sf("~/GitHub/Nashville_IMV/data/chamber_venues/chamber_venues_2020.geojson")
+cc_venues <- read_sf("~/GitHub/Nashville_IMV/data/chamber_venues/chamber_venues_2020.geojson") %>% st_transform(4269)
 #what is the 0 capacity?
 ```
 
@@ -123,7 +123,7 @@ coun_dist =
 
 ```{r}
 #joining venue data to this
-coun_dist_venues = st_join(coun_dist, st_transform(cc_venues, 4269)) %>% group_by(council_district) %>% 
+coun_dist_venues = st_join(coun_dist, cc_venues) %>% group_by(council_district) %>% 
   summarize(num_venues = n(), avg_capacity = round(mean(Capacity))) %>% #not sure why NAs are introduced
   left_join(., st_drop_geometry(coun_dist), by="council_district")
   
@@ -131,104 +131,22 @@ coun_dist_venues = st_join(coun_dist, st_transform(cc_venues, 4269)) %>% group_b
 
 
 ```{r}
-cc_venues_dist = st_join(st_transform(cc_venues, 4269),coun_dist)
+cc_venues_dist = st_join(cc_venues,coun_dist)
 
 ```
 
 ## Task 2 = Make Sense of Administrative Data
 
-
-##Bottom == Irrelevant (messy work trying to join census tracts to each other)
-
---First, organize by census tract area:
---Organizing census data:
 ```{r}
-#organize census data across years
-
-#which census tracts are not redrawn? which do we need to "massage" to get the 2010-2020 data to talk within the same spacial bound
-
-census_data$preserved = duplicated(census_data$GEOID)
-#change_CT = census_data %>% distinct(NAME, .keep_all = TRUE)
-CT_changed = census_data %>% filter(preserved==FALSE)
-CT_preserved = census_data %>% filter(preserved ==TRUE)
-
-#In 2020, there were 174 Census tracts (length(acs2020$GEOID)). 143 of those were the same geography as in 2010 (length(CT_preserved$GEOID)). So I will spatially join the ones that were redrawn. I will go by the 2020 geography
-#143 of the 161 2010 census tracts were preserved into 2020. So 18 2010 census tracts were redrawn into 31 2020 census tracts, which makes sense because the population increased.
-#I will join the 2010 demographics as a new column into the 2020 census tracts, that way we can do analysis across time, and our data is spatially consolidated.
-
-#First, preparing the tracts that were not preserved by dropping geometry to do an easy join by the GEOID and name of the tract to match up the years, and then adding back the geometry and deleting unwanted columns
-CT_preserved_2020_nosf = st_drop_geometry(CT_preserved) %>% select(-year) #all the years are 2020 so it doesn't matter
-colnames(CT_preserved_2020_nosf) = c("GEOID", "NAME", "tot_pop_est_2020", "med_inc_est_2020","id","preserved")
-
-CT_changed_and_preserved = st_drop_geometry(CT_changed)
-colnames(CT_changed_and_preserved ) = c("GEOID", "NAME", "tot_pop_est", "med_inc_est","year","id","preserved") #need to know the year because there are 2 different years
-
-median_table = inner_join(CT_preserved_2020_nosf,CT_changed_and_preserved ,by=c("GEOID","NAME"))
-
-#cleaning up the table to remove unneeded columns
-CT_preserved_both_years = median_table %>% select(-c(id.x,preserved.x,year,id.y,preserved.y))
-colnames(CT_preserved_both_years) = c("GEOID","NAME","tot_pop_est_2020","med_inc_est_2020","tot_pop_est_2010","med_inc_est_2010")
-
-#adding back geometry
-joiner = CT_preserved %>% select(GEOID,NAME,geometry)
-CT_preserved_both_years = left_join(CT_preserved_both_years, joiner,by=c("GEOID","NAME")) %>% st_as_sf()
-
-```
-
-
-```{r}
-#all the changed census tracts, 18 2010 and 31 2020
-
-median_table2 = anti_join(CT_changed_and_preserved,CT_preserved_2020_nosf,by=c("GEOID","NAME"))
-CT_changed_2010 = median_table2 %>% filter(year==2010) %>% select(-c(id,preserved)) #keeping year column for now as safety check
-colnames(CT_changed_2010) = c("GEOID","NAME","tot_pop_est_2010","med_inc_est_2010","year")
-joiner = census_data %>% select(GEOID,NAME,geometry)
-CT_changed_2010 = left_join(CT_changed_2010, joiner,by=c("GEOID","NAME")) %>% select(-year) %>% st_as_sf()
-
-
-CT_changed_2020 = median_table2 %>% filter(year==2020) %>% select(-c(id,preserved))
-colnames(CT_changed_2020) = c("GEOID","NAME","tot_pop_est_2020","med_inc_est_2020","year")
-CT_changed_2020 = left_join(CT_changed_2020, joiner,by=c("GEOID","NAME")) %>% select(-year) %>% st_as_sf()
-
-#now trying to spatially join them. spatial join makes sense because 2020 tracts are contained within 2010 tracts - they're 2010 tracts subdivided to account for denser population. But GEOID and tract names don't show this spatial relationship, so we do a spatial join.
-
-#try50 = st_union(CT_changed_2010, CT_changed_2020)
-#stuck on this spatial anti-dissolve
-```
---Add venue data to the census geometries
-```{r}
-#first, fun plot
-
-#looks like not all tracts have venues, and some venues are in areas where preserved tracts do not exist
-ggplot() +
-  geom_sf(data=CT_preserved_both_years, mapping=aes(fill=tot_pop_est_2020)) +
-  geom_sf(data=cc_venues,mapping=aes(color="#000000"))
-
-
-```
---trying to visualize tracts
-```{r}
-par(mfrow=c(1,2))
-    ggplot() +
-  geom_sf(data=CT_changed_2020, mapping=aes(fill="#000000"))
-
-  ggplot() +
-  geom_sf(data=CT_changed_2010, mapping=aes(fill="#000000")) 
-  
-#can see that the 2010 plots are just dissolves of the 2020 plots
-
-```
---more attemptage
-```{r}
-med_2020 = CT_changed_2020 %>% mutate(tract_num = ifelse(substr(NAME,17,17)==",",substr(NAME,14,16),substr(NAME,14,19))) %>% arrange(tract_num) %>% mutate(area=st_area(CT_changed_2020)) %>% st_drop_geometry() %>%  write.csv("C:/Users/sofia/Documents/GitHub/Nashville_IMV/med_table_2020.csv")
-
-med_2010 = CT_changed_2010 %>% mutate(tract_num = ifelse(substr(NAME,17,17)==",",substr(NAME,14,16),substr(NAME,14,19))) %>% arrange(tract_num) %>% mutate(area=st_area(CT_changed_2010)) %>% st_drop_geometry() %>%  write.csv("C:/Users/sofia/Documents/GitHub/Nashville_IMV/med_table_2010.csv")
-
-#ugh some tracts were consolidated in 2020, others subdivided. Might just do this in excel? I think that's the best option. Might wanna keep geometry and actually calculate area
-
+#data has APN and address
+LIS23 = st_read("C:/Users/sofia/Documents/GitHub/Nashville_IMV/data/metro/Prop_LIS_Jan_2023/Prop_LIS_Jan_2023.shp") %>% st_transform(4269)
+parcels = st_read("C:/Users/sofia/Documents/GitHub/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4269)
 ```
 
 ```{r}
-CT_changed_2010 %>% mutate(tract_num = ifelse(substr(NAME,17,17)==",",substr(NAME,14,16),substr(NAME,14,19))) %>% mapview(label="tract_num")
+#attempt to chose the parcels that match with the venues
+
+venuesxparcels = st_intersects(cc_venues, LIS23)
 ```
+
 
