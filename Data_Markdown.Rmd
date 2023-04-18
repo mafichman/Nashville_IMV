@@ -144,9 +144,59 @@ parcels = st_read("C:/Users/sofia/Documents/GitHub/Nashville_IMV/data/metro/Nash
 ```
 
 ```{r}
-#attempt to chose the parcels that match with the venues
+#loading populated database as of 4/16/2023, but only the venue names and locations
 
-venuesxparcels = st_intersects(cc_venues, LIS23)
+pop_venue_db = read.csv("C:/Users/sofia/Documents/UPenn/Nashville/Venues4_16.csv", header=TRUE)
+
+#283 venues, goal is to have all 938 assigned an APN value
+
+work_table  = select(pop_venue_db,Address_Full, Address_Number) 
+#workflow:
+  #create new column to work in
+work_table = work_table %>% mutate(APN_Address = Address_Number)
+  #for anything with less than 5 character length, substitute full address
+work_table$APN_Address = ifelse(str_length(work_table$Address_Number) < 5, work_table$Address_Full, work_table$Address_Number)
+
+  #take off anything after comma (like city/zip info)
+work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=",")
+
+  #remove all periods
+work_table$APN_Address = str_replace_all(work_table$APN_Address, "[.]", "")
+
+  #capitalize
+work_table$APN_Address = toupper(work_table$APN_Address)
+
+  #swap nomenclature
+swaps = c("DRIVE"="DR", "STREET"="ST", "AVENUE"="AVE", "PK"="PIKE", "CIRCLE"="CIR", "NORTH"="N", " SOUTH"=" S", "BOULEVARD"="BLVD", "PARKWAY"="PKWY", " ALLEY"=" ALY", "PLACE"="PL", "SQUARE"="SQ", " ROAD" = " RD", "	
+BICENTENNIAL CAPITOL MALL STATE PARK- 600 JAMES ROBERTSON PIKEWY"="600 JAMES ROBERTSON PKWY")
+work_table$APN_Address = str_replace_all(work_table$APN_Address, swaps)
+
+  #clip off more unneccessary trailing information
+work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" SUITE")
+work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" #")
+work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" NASHVILLE")
+work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" AND")
+work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" &")
+work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" STE ")
+
+#to compare
+work_join_table = select(parcels, PropAddr,APN)
+
+#170 out of 283 joined
+APN_join = inner_join(work_table, work_join_table, by = c("APN_Address"="PropAddr"))
+
+#view which addresses weren't joined and why
+viewtable = left_join(work_table, work_join_table, by = c("APN_Address"="PropAddr"))
+
+
 ```
-
+Demographic Change
+Gentrification
+ - all this over time
+ - income and race, age, industry (QCAW)
+wage stagnation
+  - profit?
+  - QCAW
+  - where people travel for work
+Diversity in ownership
 
