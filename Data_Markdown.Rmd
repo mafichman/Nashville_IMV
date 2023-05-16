@@ -2,7 +2,12 @@
 title: "Nasville Music Venues Research"
 author: "Sofia Fasullo"
 date: "2023-03-21"
-output: html_document
+output: 
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -21,24 +26,26 @@ library(viridisLite)
 library(mapview)
 library(dplyr)
 library(foreign)
+library(tidygeocoder)
 ```
 
-First I'll look at census data and chamber of commerce locations
+NOTE: possiblility to streamline this system in the future by reading .R files into this markdown rather than having all this code re-written
 
-#Census data
+#Joining Census Data to Parent Geography
+
 ```{r}
-API_key = "c03e04624fa724c446d835b3c313e3f11aa54c2d" #Sofia Fasullo's API key
+## Sofia Fasullo's API key - replace with your own, get at https://api.census.gov/data/key_signup.html
+API_key = "c03e04624fa724c446d835b3c313e3f11aa54c2d" 
 census_api_key(API_key, overwrite = TRUE)
 
-acs_variable_list.2020 <- load_variables(2020, #year
-                                         "acs5")
+## Look through existing acs variables and choose a few to examine (commented out for now)
+#acs_variable_list.2020 <- load_variables(2020,"acs5")
 
 ## Set up a list of variables to grab
 acs_vars <- c("B01001_001E", # ACS total Pop estimate
               "B06011_001E") # Median income in past 12 months
 
-## Grab some data for Chester County
-
+## Grab block-level for Davidson County: 2020 and 2010
 acs2020 <- get_acs(geography = "tract",
                    year = 2020,
                    variables = acs_vars,
@@ -50,9 +57,6 @@ acs2020 <- get_acs(geography = "tract",
   rename(total_pop_est = B01001_001E,
          median_income_est = B06011_001E) %>%
   mutate(year = 2020)
-
-
-## Let's try getting 2010 data
 
 acs2010 <- get_acs(geography = "tract",
                    year = 2010,
@@ -66,112 +70,105 @@ acs2010 <- get_acs(geography = "tract",
          median_income_est = B06011_001E) %>%
   mutate(year = 2010)
 
-
-full_table <- rbind(acs2010, acs2020)
-
+## combining tables in "long data" form - not used currently
+#full_table <- rbind(acs2010, acs2020)
 ```
 
-chamber of commerce music venue data load
 ```{r}
+## loading "parent" geography: city council districts (the match up to census block boundaries and )
+council_districts = st_read("https://data.nashville.gov/resource/iw7r-m8qr.geojson") %>% select(council_district, geometry) %>% st_transform(crs=4269)
+```
+
+```{r}
+## load chamber of commerce music data - will be replaced by manually collected data
 cc_venues <- read_sf("~/GitHub/Nashville_IMV/data/chamber_venues/chamber_venues_2020.geojson") %>% st_transform(4269)
-#what is the 0 capacity?
 ```
 
-NOTE: possiblility to streamline this system in the future by reading .R files into this markdown rather than having all this code re-written
-
-rename data so generic names from various files are given specific names in this 
-```{r}
-#adding an id column for ease of joins
-full_table$id = seq(1:length(full_table$GEOID))
-census_data = full_table
-```
-
-#Data communication
 Idea is 2 different "big" tables: one organized by census tract and one organized by venue (for ease of different access)
 
-#Task 1: join data to parent geography
 ```{r}
-council_districts = st_read("https://data.nashville.gov/resource/iw7r-m8qr.geojson") %>% select(council_district, geometry) %>% st_transform(crs=4269)
+## create new table of census acs data to manipulate
+census10 = acs2010
+census10[is.na(census10)] <- 0 #allow for calculations to be made
 
-
-```
-
-```{r}
-census10 = filter(census_data, year==2010)
-census10[is.na(census10)] <- 0
+## calculate new columns (in this case, area, population density, and preparation to calculate average median income)
 census10$area10 = st_area(census10)
 census10 = census10 %>% mutate(pop_dens10 = total_pop_est/area10, med_incxpop = median_income_est*total_pop_est)
-#I made distance in square miles, not meters
-council10 = st_join(council_districts,census10) %>% group_by(council_district) %>% summarize(tot_pop10 = sum(total_pop_est), avg_med_inc10 = (sum(med_incxpop)/tot_pop10), avg_dens10 = mean(pop_dens10)*2590000)
 
+## join blocks to council districts and aggregate block data by council districts
+council10 = st_join(council_districts,census10) %>% group_by(council_district) %>% summarize(tot_pop10 = sum(total_pop_est), avg_med_inc10 = (sum(med_incxpop)/tot_pop10), avg_dens10 = mean(pop_dens10)*2590000) #I made distance in square miles, not meters (that's the *2590000)
 
+## repeat process with 2020 data
 census20 = filter(census_data, year==2020)
 census20[is.na(census20)] <- 0
 census20$area20 = st_area(census20)
 census20 = census20 %>% mutate(pop_dens20 = total_pop_est/area20, med_incxpop = median_income_est*total_pop_est)
 council20 = st_join(council_districts,census20) %>% group_by(council_district) %>% summarize(tot_pop20 = sum(total_pop_est), avg_med_inc20 = (sum(med_incxpop)/tot_pop20), avg_dens20 = mean(pop_dens20)*2590000)
 
-#parent geography with aggregated census data from both years
+## create dataset with council districts containing aggregated census data from both years AND further calculated columns (percent change population, percent change average median income, percent change in population density)
 coun_dist = 
   left_join(st_drop_geometry(council10), st_drop_geometry(council20), by="council_district") %>%
   left_join(.,council_districts,by="council_district") %>%
   st_as_sf() %>% 
   mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1))
-
-
 ```
 
 ```{r}
-#joining venue data to this
+## aggregating venue data by council district area and creating table of council districts with census acs and venue data
 coun_dist_venues = st_join(coun_dist, cc_venues) %>% group_by(council_district) %>% 
   summarize(num_venues = n(), avg_capacity = round(mean(Capacity))) %>% #not sure why NAs are introduced
   left_join(., st_drop_geometry(coun_dist), by="council_district")
-  
 ```
 
-
 ```{r}
+## creating table of venues with census acs data (aggregated by council districts) added on
 cc_venues_dist = st_join(cc_venues,coun_dist)
-
 ```
 
-## Task 2 = Make Sense of Administrative Data
+## Making Sense of Administrative Data
 
 ```{r}
-#data has APN and address
-LIS23 = st_read("C:/Users/sofia/Documents/GitHub/Nashville_IMV/data/metro/Prop_LIS_Jan_2023/Prop_LIS_Jan_2023.shp") %>% st_transform(4269)
+## load administrative data (very time consuming so only loading tax parcels rather than Licenses and Inspections data)
+#LIS23 = st_read("C:/Users/sofia/Documents/GitHub/Nashville_IMV/data/metro/Prop_LIS_Jan_2023/Prop_LIS_Jan_2023.shp") %>% st_transform(4269)
 parcels = st_read("C:/Users/sofia/Documents/GitHub/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4269)
 ```
 
+283 venues, goal is to have all 938 assigned an APN value
 ```{r}
-#loading populated database as of 4/16/2023, but only the venue names and locations
+## loading manually populated venue database (as of 5/11/2023)
+pop_venue_db = read.csv("C:/Users/sofia/Documents/UPenn/Nashville/venues4_16.csv", header=TRUE)
 
-pop_venue_db = read.csv("C:/Users/sofia/Documents/UPenn/Nashville/Venues4_16.csv", header=TRUE)
-
-#283 venues, goal is to have all 938 assigned an APN value
-
+## select only the two address columns from venue database to have a simpler table to work with
 work_table  = select(pop_venue_db,Address_Full, Address_Number) 
-#workflow:
-  #create new column to work in
+
+## select only the two address column to match and APN column from tax parcel data to have a simpler table to work with
+work_join_table = select(parcels, PropAddr,APN)
+
+## create empty "APN_Address" column to populate with venue address formated like tax parcel data addresses
 work_table = work_table %>% mutate(APN_Address = Address_Number)
-  #for anything with less than 5 character length, substitute full address
+
+## for any street address with less than 5 character length, substitute full address
 work_table$APN_Address = ifelse(str_length(work_table$Address_Number) < 5, work_table$Address_Full, work_table$Address_Number)
 
-  #take off anything after comma (like city/zip info)
+## take off anything after comma (like city/zip info)
 work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=",")
 
-  #remove all periods
+## remove all periods
 work_table$APN_Address = str_replace_all(work_table$APN_Address, "[.]", "")
 
-  #capitalize
+## capitalize
 work_table$APN_Address = toupper(work_table$APN_Address)
 
-  #swap nomenclature
+## swap nomenclature (and a few specific outliers)
 swaps = c("DRIVE"="DR", "STREET"="ST", "AVENUE"="AVE", "PK"="PIKE", "CIRCLE"="CIR", "NORTH"="N", " SOUTH"=" S", "BOULEVARD"="BLVD", "PARKWAY"="PKWY", " ALLEY"=" ALY", "PLACE"="PL", "SQUARE"="SQ", " ROAD" = " RD", "	
-BICENTENNIAL CAPITOL MALL STATE PARK- 600 JAMES ROBERTSON PIKEWY"="600 JAMES ROBERTSON PKWY")
+BICENTENNIAL CAPITOL MALL STATE PARK- 600 JAMES ROBERTSON PIKEWY"="600 JAMES ROBERTSON PKWY",'"'="")
 work_table$APN_Address = str_replace_all(work_table$APN_Address, swaps)
 
-  #clip off more unneccessary trailing information
+## second stage swaps (swaps that must occur only after other swaps have)
+second_swaps = c("  "=" ")
+str_replace_all(work_table$APN_Address,second_swaps)
+
+## clip off more unnecessary trailing information
 work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" SUITE")
 work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" #")
 work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" NASHVILLE")
@@ -179,17 +176,88 @@ work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" AN
 work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" &")
 work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" STE ")
 
-#to compare
-work_join_table = select(parcels, PropAddr,APN)
-
-#170 out of 283 joined
+## join by address to tax parcel data - 170 out of 283 joined by address
 APN_join = inner_join(work_table, work_join_table, by = c("APN_Address"="PropAddr"))
 
-#view which addresses weren't joined and why
-viewtable = left_join(work_table, work_join_table, by = c("APN_Address"="PropAddr"))
-
+## view which addresses weren't joined and why
+viewtable = left_join(work_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% filter(is.na(APN))
+#out of first 10 unjoined addresses, 8 are because the address doesn't exist in the parcels dataset---> probabilistic match will likely not be accurate, have to go in manually
 
 ```
+
+## Mapping venues
+mapping current matched venues by downloading shapefile
+```{r}
+##joining matched addresses with other features of the venue
+pop_venue_db$APN = as.character(pop_venue_db$APN)
+venue_partial_geomatched = 
+  inner_join(pop_venue_db,APN_join,  by=c("Address_Full", "Address_Number")) %>% 
+  st_sf() %>%
+  st_transform(st_crs(coun_dist_venues)) %>% 
+  mutate(APN = APN.x) %>% 
+  select(-c(APN.x,APN.y)) %>% unique()
+
+## tax parcel data is in a polygon of the building layout, but we want venue data in points --> get centroids, split into lat lon for ease later
+venue_partial_geomatched$Coordinates_lat = st_coordinates(st_centroid(venue_partial_geomatched$geometry))[,2]
+venue_partial_geomatched$Coordinates_lon = st_coordinates(st_centroid(venue_partial_geomatched$geometry))[,1]
+
+## create sf point geometry column
+venue_points = 
+  venue_partial_geomatched %>% 
+  st_drop_geometry() %>% 
+  st_as_sf(coords=c("Coordinates_lon", "Coordinates_lat"), crs=st_crs(venue_partial_geomatched)) %>% 
+  st_transform(st_crs(coun_dist_venues)) %>% mutate(match_method = "APN")
+
+## identify unmatched venue addresses and prepare for geocoding
+unmatched_venues = anti_join(pop_venue_db,APN_join,  by=c("Address_Full", "Address_Number")) %>% inner_join(work_table, by=c("Address_Full", "Address_Number")) %>% unique() %>% select(-c(APN,Coordinates_lat,Coordinates_lon)) %>% na.omit()
+
+## THIS GEOCODING DID NOT VORK
+venues_geocoded <- unmatched_venues %>%
+  geocode(method = "geocodio", address = APN_Address, lat = lat, long = lon) %>% na.omit() %>% st_as_sf(coords=c("lon", "lat"), crs=st_crs(venue_partial_geomatched)) %>% 
+  st_transform(st_crs(coun_dist_venues)) %>% mutate(match_method="geocoded")
+
+## recreate table of all matched and geocoded venues with point geometry
+venues_complete = rbind(select(venue_points,c(Venue_name,APN_Address,match_method,geometry)),select(venues_geocoded,c(Venue_name,APN_Address,match_method,geometry)))
+
+## identify venues that are STILL unmatched - not address-matched or geocoded
+still_unmatched = anti_join(pop_venue_db,venues_complete,  by="Venue_name") %>% inner_join(work_table, by=c("Address_Full", "Address_Number")) %>% unique() %>% select(c(Venue_name, APN_Address)) %>% mutate(match_method="manual",geometry="") 
+
+## convert matched & geocoded venues to not have spatial properties so they can join to the venues without geometries and a full venue table can be created
+to_join = venues_complete %>% as.data.frame()
+to_join$geometry = as.character(to_join$geometry)
+
+## join all venues
+pop_venue_updated = rbind(to_join,still_unmatched)
+
+## save to csv (ALREADY DONE)
+#st_write(pop_venue_updated, "C:/Users/sofia/Documents/UPenn/Nashville/get_to_work.csv")
+
+##  manually add point geometry for the venues without (looked address up on google maps, copied coordinates, formatted)
+
+## upload csv to R
+venues_manual = read_csv("C:/Users/sofia/Documents/UPenn/Nashville/Manual.csv") %>% select(Venue_name, APN_Address, match_method, geometry)
+
+## re-convert to sf with point geometry
+venues_manual$geometry = st_as_sfc(venues_manual$geometry)
+venues_manual = venues_manual %>% st_as_sf()
+
+## write as shapefile to map (ALREADY)
+#st_write(venues_manual, "C:/Users/sofia/Documents/UPenn/Nashville/Nashville_Venues_Manual.shp")
+#no crs but should be 4269 - complete manually in mapping software
+
+```
+
+```{r}
+## plotting current venues on ggplot
+#ggplot() +
+#  geom_sf(mapping = aes(geometry=geometry, fill=num_venues), data=coun_dist_venues) +
+#  geom_sf(mapping = aes(geometry=geometry), data=venue_complete, color="white", fill=NA) +
+#  geom_sf(mapping = aes(geometry=geometry), data=venue_points, color="red", size=0.1)
+```
+
+## Demographic Analysis
+
+Ideas: 
 Demographic Change
 Gentrification
  - all this over time
@@ -198,5 +266,5 @@ wage stagnation
   - profit?
   - QCAW
   - where people travel for work
-Diversity in ownership
-
+Diversity in ownership??
+- state vs local? crackdown on LGBTQ+ spaces??
