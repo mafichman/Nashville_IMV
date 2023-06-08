@@ -133,7 +133,7 @@ cc_venues_dist = st_join(cc_venues,coun_dist)
 parcels = st_read("C:/Users/sofia/Documents/GitHub/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4269)
 ```
 
-283 venues, goal is to have all 938 assigned an APN value
+283 venues, goal is to have all 238 assigned an APN value
 ```{r}
 ## loading manually populated venue database (as of 5/11/2023)
 pop_venue_db = read.csv("C:/Users/sofia/Documents/UPenn/Nashville/venues4_16.csv", header=TRUE)
@@ -160,13 +160,12 @@ work_table$APN_Address = str_replace_all(work_table$APN_Address, "[.]", "")
 work_table$APN_Address = toupper(work_table$APN_Address)
 
 ## swap nomenclature (and a few specific outliers)
-swaps = c("DRIVE"="DR", "STREET"="ST", "AVENUE"="AVE", "PK"="PIKE", "CIRCLE"="CIR", "NORTH"="N", " SOUTH"=" S", "BOULEVARD"="BLVD", "PARKWAY"="PKWY", " ALLEY"=" ALY", "PLACE"="PL", "SQUARE"="SQ", " ROAD" = " RD", "	
-BICENTENNIAL CAPITOL MALL STATE PARK- 600 JAMES ROBERTSON PIKEWY"="600 JAMES ROBERTSON PKWY",'"'="")
-work_table$APN_Address = str_replace_all(work_table$APN_Address, swaps)
+swaps = c("DRIVE"="DR", "STREET"="ST", "AVENUE"="AVE", "PKwork_table$APN_Address = str_replace_all(work_table$APN_Address, swaps)"="PIKE", "CIRCLE"="CIR", "NORTH"="N", " SOUTH"=" S", "BOULEVARD"="BLVD", "PARKWAY"="PKWY", " ALLEY"=" ALY", "PLACE"="PL", "SQUARE"="SQ", " ROAD" = " RD", "BICENTENNIAL CAPITOL MALL STATE PARK- 600 JAMES ROBERTSON PIKEWY"="600 JAMES ROBERTSON PKWY", "ONE "="1 ", "FOURTH"="4TH")
+
 
 ## second stage swaps (swaps that must occur only after other swaps have)
-second_swaps = c("  "=" ")
-str_replace_all(work_table$APN_Address,second_swaps)
+#second_swaps = c("  "=" ")
+#str_replace_all(work_table$APN_Address,second_swaps)
 
 ## clip off more unnecessary trailing information
 work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" SUITE")
@@ -180,10 +179,59 @@ work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" ST
 APN_join = inner_join(work_table, work_join_table, by = c("APN_Address"="PropAddr"))
 
 ## view which addresses weren't joined and why
-viewtable = left_join(work_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% filter(is.na(APN))
+viewtable = left_join(work_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% filter(is.na(APN)) %>% unique()
 #out of first 10 unjoined addresses, 8 are because the address doesn't exist in the parcels dataset---> probabilistic match will likely not be accurate, have to go in manually
 
 ```
+
+COPY of above chunk for updated version
+```{r}
+## loading manually populated venue database (last updated 5/11/2023)
+pop_venue_db = read.csv("C:/Users/sofia/Documents/UPenn/Nashville/venues4_16.csv", header=TRUE)
+
+## loading the manually matched database of venues <--> parcels that I made (last updated 6/7/2023) 
+manual_match_table = read.csv("C:/Users/sofia/Documents/UPenn/Nashville/manual_APNs.csv", header=TRUE)
+
+## select only the two address column to match and APN column from tax parcel data to have a simpler table to work with
+work_join_table = select(parcels, PropAddr,APN)
+
+## join by address to tax parcel data
+APN_join = inner_join(manual_match_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% unique()
+
+## view which addresses weren't joined and why - should only be venues not in study area or with insufficient data
+APN_nomatch = left_join(manual_match_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% filter(is.na(APN)) %>% unique()
+
+## creating simple and detailed tables
+
+## simple table (use for all administrative and venue data joins)
+venue_admin_key_table = select(APN_join, c(Venue_name, APN_Address, APN))
+
+## venue table (all venue info and some parcel info, including coordinates)
+venue_data_join = left_join(venue_admin_key_table, pop_venue_db, by="Venue_name") %>% rename(c(APN=APN.x,Admin_Address=APN_Address)) %>% select(-c(APN.y,Street_Name))
+
+venue_coordinates = APN_join %>% select(c(Venue_name,geometry))
+venue_coordinates$Coordinates_lat = st_coordinates(st_centroid(venue_coordinates$geometry))[,2]
+venue_coordinates$Coordinates_lon = st_coordinates(st_centroid(venue_coordinates$geometry))[,1]
+venue_coordinates = venue_coordinates %>% select(-geometry) %>% st_drop_geometry() 
+
+venue_data_done = left_join(select(venue_data_join,-c(Coordinates_lat,Coordinates_lon, Address_Full)),venue_coordinates)
+
+## detailed table (all venue and parcel information)
+detailed_table = left_join(venue_data_done,parcels,by= c("Admin_Address"="PropAddr","APN")) %>% unique()
+
+## save the important tables to local files
+
+## save simple table
+#st_write(venue_admin_key_table, "C:/Users/sofia/Documents/UPenn/Nashville/final_tables/simple_table.csv")
+
+## save venue table
+#st_write(venue_data_done, "C:/Users/sofia/Documents/UPenn/Nashville/final_tables/venue_table.csv")
+
+## save detailed table
+#st_write(detailed_table, "C:/Users/sofia/Documents/UPenn/Nashville/final_tables/detailed_table.csv")
+
+```
+
 
 ## Mapping venues
 mapping current matched venues by downloading shapefile
@@ -246,6 +294,19 @@ venues_manual = venues_manual %>% st_as_sf()
 #no crs but should be 4269 - complete manually in mapping software
 
 ```
+
+```{r}
+## venues that I manually put coordinates into
+venue_points = st_read("C:/Users/sofia/Documents/UPenn/Nashville/Nashville_Venues_Manual.shp")
+
+## load only necessary columns of administrative tax parcel data for ease of use
+admin_short = parcels %>% select("PropAddr","geometry")
+
+## spatial join of manual and APN-address-matched points to tax parcels (APN-addressed-matched venues should result in APN_Address=PropAddr)
+spatial_join = st_join(venue_points,admin_short,join=st_intersects) #DOES NOT VORK, DUPLICATE VERTICES
+```
+
+
 
 ```{r}
 ## plotting current venues on ggplot
