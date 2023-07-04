@@ -1,4 +1,4 @@
-Venue_name,APN_Address_stringr,APN_Address,match_method,notes
+name,APN_Address,APN_Address_Manual,match_method,notes
 Example Venue,402 12TH AVE S,402 12TH AVE S,APN,
 12 South Taproom & Grill,2318 12TH AVE S,2318 12TH AVE S,APN,
 404 Bar & Grill,404 ELYSIAN FIELDS RD,404 ELYSIAN FIELDS RD,APN,

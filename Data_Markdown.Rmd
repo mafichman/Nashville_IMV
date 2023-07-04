@@ -34,7 +34,7 @@ Load venue datasets
 ```{r}
 ## load venue data (last updated: 04/16/2023)
 
-venues = read.csv("~/GitHub/Nashville_IMV/data/venue_tables/venue_table_filled_4_16.csv") %>% st_as_sf( coords = c("Coordinates_lon","Coordinates_lat"), remove = FALSE,crs= 4269)
+venues = read.csv("~/GitHub/Nashville_IMV/data/venue_tables/venue_table_filled_4_16.csv") %>% st_as_sf( coords = c("x","y"), remove = FALSE,crs= 4269)
 
 ## venue APN data (last updated: 04/16/2023) - use this dataset as a "key" for all tabular joins
 venue_admin_key_table = read.csv("~/GitHub/Nashville_IMV/data/venue_tables/simple_table_4_16.csv")
@@ -44,7 +44,7 @@ venue_attrib = read.csv("~/GitHub/Nashville_IMV/data/venue_tables/venue_table_de
 
 ## data dictionary for detailed venue table
 data_dictionary_load = read.csv("~/Github/Nashville_IMV/data/venue_tables/data_dictionary_venue_detailed_7_3.csv", header=F)
-data_dictionary_view = t(data_dictionary_load) %>% as.data.frame() %>%  filter(V1!="col_name") %>% mutate(col_name=V1,col_definition=V2) %>% select(-c(V1,V2))
+data_dictionary_view = t(data_dictionary_load) %>% as.data.frame() %>% mutate(col_name=V1,col_definition=V2,survey_question=V3) %>% select(-c(V1,V2,V3))
 #view(data_dictionary_view)
 
 ```
@@ -177,9 +177,9 @@ Parcels dataset cleaning
 ## load administrative data (very time consuming)
 parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4269)
 
-venue_all_parcel_data = left_join(venue_admin_key_table,parcels,by= c("APN_Address"="PropAddr","APN")) %>% unique()
+venue_all_parcel_data = left_join(venue_admin_key_table,parcels,by= c("address_admin"="PropAddr","APN")) %>% unique()
 
-variables_to_keep = c("Venue_name", "APN_Address", "APN", "SalePrice", "Acres", "FinishArea", "LUDesc", "Owner", "geometry")
+variables_to_keep = c("name", "address_admin", "APN", "SalePrice", "Acres", "FinishArea", "LUDesc", "Owner", "geometry")
 
 venue_select_parcel_data = venue_all_parcel_data %>% select(variables_to_keep) %>% mutate(Area_sqft = Acres*43560)
 #area is of parcel not building so I will not calculate price/sqft just yet
