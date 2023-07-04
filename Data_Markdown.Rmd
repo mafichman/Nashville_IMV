@@ -168,7 +168,7 @@ Business name (How many are we missing?)
 
 Fire department dataset cleaning
 ```{r}
-
+#wait for Michael to redirect you to this dataset
 ```
 
 
@@ -184,6 +184,11 @@ variables_to_keep = c("Venue_name", "APN_Address", "APN", "SalePrice", "Acres", 
 venue_select_parcel_data = venue_all_parcel_data %>% select(variables_to_keep) %>% mutate(Area_sqft = Acres*43560)
 #area is of parcel not building so I will not calculate price/sqft just yet
 #will get centroids from venues table rather than re-calculating
+```
+
+Business Licenses Dataset cleaning
+```{r}
+
 ```
 
 
