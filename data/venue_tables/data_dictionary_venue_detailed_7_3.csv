@@ -1,0 +1,62 @@
+col_name,name,liason,is_independent,capacity,is_indep_booking,events_monthly,years_operation,payment_source,is_interdisciplinary,is_promoting,is_music_main,is_comm_hub,is_creative,is_experimental,is_threatened_`,is_threatened_2,is_threatened_3,desc,contact,email,phone,url,Genre,Club,Disco (mainstream),Outdoor stage (open air),Concert hall / livehouse,Theatre,Cinema,Music Bar,Gallery / museum space,Restaurant / cafe,Rental venue / warehouse,Arena / stadium,Retail store / Shop,Production studio / Co-working space
+col_definition,Venue name,Liaison responsible to fill out sheet?,"Ownership Structure:
+
+1. Yes
+2. No
+3. Information unavailable",Capacity (Numeric Input),"Independent Booking:
+
+1. Always
+2. Sometimes
+3. Never
+4. Information unavailable","Events per Month:
+
+1. 1-4
+2. 5-10
+3. 11-20
+4. 20+","Years of Operation:
+
+1. 0-3
+2. 3-10
+3. 11-20
+4. 20+","Artist payment based mostly on:
+
+1. Ticket sales
+2. Bar/food sales (e.g. flat fee)
+3. Tips
+4. Mixed/all of the above","Interdisciplinarity:
+
+1.Not At All Likely
+2. Not too likely
+3. Somewhat likely
+4. Very Likely","Promoting events:
+
+1. Not At All Likely
+2. Not too likely
+3. Somewhat likely
+4. Very Likely","Main purpose:
+
+1. Not At All Likely
+2. Not too likely
+3. Somewhat likely
+4. Very Likely","Community Focus:
+
+1. Not At All Likely
+2. Not too likely
+3. Somewhat likely
+4. Very Likely","Creative Output:
+
+1. Not At All Likely
+2. Not too likely
+3. Somewhat likely
+4. Very Likely","Experimentation:
+
+1. Not At All Likely
+2. Not too likely
+3. Somewhat likely
+4. Very Likely","Threats:
+
+Neighbors-related","Threats:
+
+Costs / rents-related","Threats:
+
+Licensing-related",Venue short description,Contact person,Email address,Telephone number,Website URL,Genre: ,Club,Disco (mainstream),Outdoor stage (open air),Concert hall / livehouse,Theatre,Cinema,Music Bar,Gallery / museum space,Restaurant / cafe,Rental venue / warehouse,Arena / stadium,Retail store / Shop,Production studio / Co-working space
