@@ -9,15 +9,18 @@ library(dplyr)
 
 ### Task 1: Re-format addresses to be consistent with administrative data
 
-
 ## loading manually populated venue database (as of 4/16/2023) and rename to match CFP naming conventions
-pop_venue_db = read.csv("~/Github/Nashville_IMV/data/venue_tables/venues4_16.csv", header=T) %>% rename(c(name=Venue_name, url=Website_URL, address=Address_Full, address_admin=Address_Number, street=Street_Name, zip=Postcode, county=County, city=Municipality, y=Coordinates_lat, x=Coordinates_lon))
+renames_short = c("name"="Venue_name", "url"="Website_URL", "address"="Address_Full", "address_admin"="Address_Number", "street"="Street_Name", "zip"="Postcode", "county"="County", "city"="Municipality", "y"="Coordinates_lat", "x"="Coordinates_lon")
+renames_long = c("name"="V1", "liaison"="V2", "ownership_structure"="V3", "capacity"="V4", "independent_booking"="V5", "events_per_month"="V6", "years_operating"="V7", "funding_source"="V8", "interdisciplinarity"="V9", "event_promotion"="V10", "purpose"="V11", "community_focus"="V12", "creativity"="V13", "experimentation"="V14", "threats_neighbors"="V15", "threats_cost"="V16", "threats_licensing"="V17", "description"="V18", "contact_name"="V19", "contact_email"="V20", "contact_telephone"="V21", "url"="V22", "address"="V23", "address_admin"="V24", "street"="V25", "zip"="V26", "county"="V27", "city"="V28", "APN"="V29", "y"="V30", "x"="V31", "genre"="V32", "venueType_club"="V33", "venueType_disco"="V34", "venueType_openAir"="V35", "venueType_concertHall"="V36", "venueType_theater"="V37", "venueType_cinema"="V38", "venueType_musicBar"="V39", "venueType_gallery"="V40", "venueType_restaurant"="V41", "venueType_warehouse"="V42", "venueType_arena"="V43", "venueType_shop"="V44", "venueType_studio"="V45")
+#renames_long2 = c("Venue name"="name", "Liaison responsible to fill out sheet?"="liaison", "Ownership Structure: 1. Yes 2. No 3. Information unavailable"="ownership_structure", "Capacity (Numeric Input)"="capacity", "Independent Booking: 1. Always 2. Sometimes 3. Never 4. Information unavailable"="independent_booking", "Events per Month: 1. 1-4 2. 5-10 3. 11-20 4. 20+"="events_per_month", "Years of Operation: 1. 0-3 2. 3-10 3. 11-20 4. 20+"="years_operating", "Artist payment based mostly on: 1. Ticket sales 2. Bar/food sales (e.g. flat fee) 3. Tips 4. Mixed/all of the above"="funding_source", "Interdisciplinarity: 1.Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="interdisciplinarity", "Promoting events: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="event_promotion", "Main purpose: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="purpose", "Community Focus: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="community_focus", "Creative Output: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="creativity", "Experimentation: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="experimentation", "Threats: Neighbors-related"="threats_neighbors", "Threats: Costs / rents-related"="threats_cost", "Threats: Licensing-related"="threats_licensing", "Venue short description"="description", "Contact person"="contact_name", "Email address"="contact_email", "Telephone number"="contact_telephone", "Website URL"="url", "Address Full"="address", "Address Number"="address_admin", "Street Name"="street", "Postcode"="zip", "County"="county", "Municipality"="city", "APN"="APN", "Coordinates (latitude)"="y", "Coordinates (longitude)"="x", "Genre: "="genre", "Club"="venueType_club", "Disco (mainstream)"="venueType_disco", "Outdoor stage (open air)"="venueType_openAir", "Concert hall / livehouse"="venueType_concertHall", "Theatre"="venueType_theater", "Cinema"="venueType_cinema", "Music Bar"="venueType_musicBar", "Gallery / museum space"="venueType_gallery", "Restaurant / cafe"="venueType_restaurant", "Rental venue / warehouse"="venueType_warehouse", "Arena / stadium"="venueType_arena", "Retail store / Shop"="venueType_shop", "Production studio / Co-working space"="venueType_studio")
+pop_venue_db = read.csv("~/Github/Nashville_IMV/data/venue_tables/venues_[date].csv", header=F) %>% rename(renames_long)
+pop_venue_db = pop_venue_db[-c(1:4),]
 
 ## load administrative data (very time consuming so only loading tax parcels rather than Licenses and Inspections data)
 parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4269) 
 
 ## select only the two address columns from venue database to have a simpler table to work with
-work_table  = select(pop_venue_db,address,address_admin) 
+work_table  = select(pop_venue_db,name,address,address_admin) 
 
 ## select only the two address column to match and APN column from tax parcel data to have a simpler table to work with
 work_join_table = select(parcels, PropAddr,APN)
@@ -59,8 +62,8 @@ unmatched_table = left_join(work_table, work_join_table, by = c("APN_Address"="P
 #out of first 10 unjoined addresses, 8 are because the address doesn't exist in the parcels dataset---> probabilistic match will likely not be accurate, have to go in manually
 
 ## save a local version of a full table of venues (those joined to administrative data and those unmatched) to manually match the rest
-full_table = left_join(work_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% unique() %>% mutate(APN_Address_Manual = "") %>% select(address,address_admin,APN_Address,APN,APN_Address_Manual)
-#write.csv(full_table, file="path/filename.csv")
+full_table = left_join(work_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% unique() %>% mutate(APN_Address_Manual = "") %>% select(name,address,address_admin,APN_Address,APN,APN_Address_Manual)
+#write.csv(full_table, file="~/Github/Nashville_IMV/data/venue_tables/manual_APNs_[date].csv")
 
 
 ### Task 2: Manually add in any missing addresses that need to match administrative data, and join final address list to administrative data
@@ -70,13 +73,13 @@ full_table = left_join(work_table, work_join_table, by = c("APN_Address"="PropAd
 ## put a copy of this manually matched table into "~/Github/Nashville_IMV/data/venue_tables/manual_APNs[date].csv" with date of last VENUE TABLE update
 
 ## load back in the manually matched database of venues <--> parcels that I made (last updated 6/7/2023) 
-manual_match_table = read.csv("~/Github/Nashville_IMV/data/venue_tables/manual_APNs_4_16.csv", header=TRUE)
+manual_match_table = read.csv("~/Github/Nashville_IMV/data/venue_tables/manual_APNs_[date].csv", header=TRUE)
 
 ## join by address to tax parcel data - 274 out of 283 matched
-APN_join2 = inner_join(manual_match_table, work_join_table, by = c("APN_Address_Manual"="PropAddr")) %>% unique()
+APN_join2 = inner_join(manual_match_table, work_join_table, by = c("APN_Address_Manual"="PropAddr")) %>% unique() %>% select(-APN.x) %>% rename(APN = APN.y)
 
 ## view which addresses weren't joined and why - should only be venues not in study area or with insufficient data
-APN_nomatch = left_join(manual_match_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% filter(is.na(APN)) %>% unique()
+APN_nomatch = left_join(manual_match_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% filter(is.na("APN")) %>% unique()
 
 ## creating useful tables
 
@@ -99,10 +102,10 @@ venue_data_done = left_join(select(venue_data_join,-c(y,x,address,address_admin.
 ## if updated, save the important tables to Github
 
 ## save simple table (for joins) with date of last VENUE TABLE update
-#st_write(venue_admin_key_table, "~Github/Nashville_IMV/data/venue_tables/simple_table[date].csv")
+#write.csv(venue_admin_key_table,"~/Github/Nashville_IMV/data/venue_tables/simple_table_[date].csv")
 
 ## save venue table to Github with date of last VENUE TABLE update (remember, this is just the manually updated venue list with all the information filled in)
-#write.csv(venue_data_done,"~/Github/Nashville_IMV/data/venue_tables/venue_table_filled[date].csv")
+#write.csv(venue_data_done,"~/Github/Nashville_IMV/data/venue_tables/venue_table_filled_[date].csv")
 
 
 ### Task 3: Re-organize rest of venue attribute data

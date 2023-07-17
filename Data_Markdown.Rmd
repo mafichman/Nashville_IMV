@@ -63,19 +63,16 @@ NOTE: possiblility to streamline this system in the future by reading .R files i
 API_key = "c03e04624fa724c446d835b3c313e3f11aa54c2d" 
 census_api_key(API_key, overwrite = TRUE)
 
-## Look through existing acs variables and choose a few to examine (commented out for now)
+## Look through existing acs variables and choose a few to examine: filter geography to block group
 #acs_variable_list.2020 <- load_variables(2020,"acs5")
 
 ## Set up a list of variables to grab
-#acs_vars <- c("B01001_001E", # ACS total Pop estimate
-#              "B06011_001E", # Median income in past #12 months
-#              "B21005_002E", # 18-34 yr olds estimate
-#              "B25011_026E", # total renter occupied #estimate
-#              "B25031_001E" # median rent estimate
-#              ) 
 acs_vars <- c("B01001_001E", # ACS total Pop estimate
-              "B06011_001E" # Median income in past
-)
+              "B06011_001E", # Median income in past 12 months
+              "B09021_008E", # 18-34 yr olds estimate
+              "B25003_003E", # total renter occupied estimate
+              "B25031_001E" # median rent estimate
+              )
 
 ## Grab block-level for Davidson County: 2020 and 2010
 acs2020 <- get_acs(geography = "tract",
@@ -158,21 +155,6 @@ venues_dist = st_join(venues,coun_dist)
 
 - Then use the code below to inspect and visualize this information.
 
-The variables in mind:
-DAta set: Capacity
-Capacity Data (From fire department... what are we missing?)
-Data set: Parcels
-Zoning
-geometry
-Centroids (as lat/lon)
-Most recent sales value
-Sales value by square feet
-Sq footage (from property or parcels)
-Owner (from parcels)
-Data set: Business licenses
-License type
-Business name (How many are we missing?)
-
 Fire department dataset cleaning
 ```{r}
 ## load fire department data
@@ -197,7 +179,7 @@ parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp")
 
 venue_all_parcel_data = left_join(venue_admin_key_table,parcels,by= c("address_admin"="PropAddr","APN")) %>% unique()
 
-variables_parcels = c("name", "address_admin", "APN", "SalePrice", "Acres", "FinishArea", "LUDesc", "Owner", "geometry")
+variables_parcels = c("name", "address_admin", "APN", "TotlAppr", "SalePrice", "Acres", "FinishArea", "LUDesc", "Owner", "geometry")
 
 venue_select_parcel_data = venue_all_parcel_data %>% select(all_of(variables_parcels)) %>% mutate(Area_sqft = Acres*43560)
 #area is of parcel not building so I will not calculate price/sqft just yet
