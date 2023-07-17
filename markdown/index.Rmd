@@ -81,6 +81,8 @@ Let's give descriptive statistics for the venue database
 
 - Programming, cost and relationship to distance to CBD
 
+- Venue age by district - where are the young and old venues?
+
 # 6. Venues and Regulation
 
 - What kind of licenses are associated with these venues?
