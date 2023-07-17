@@ -38,6 +38,6 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# data files from Metro
+# data from metro
 
 /data/metro
