@@ -53,6 +53,8 @@ Let's give descriptive statistics for the venue database
 
 - Histogram of capacities (facetted by indie/non)
 
+- Map of occupancies (e.g. occupant load per fishnet cell or per planning area)
+
 - What percentage of total capacity is independent vs. corporate?
 
 - Bar plots of programming variables (facetted by indie/non)
