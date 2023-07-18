@@ -2,15 +2,140 @@
 title: "Nashville Venues Project Data Portal"
 author: "Michael Fichman & Sofia Fasullo for PennPraxis"
 date: "7/14/2023"
-output: 
+output:
   html_document:
-    toc: true
-    toc_float: true
-    code_download: true
+    toc: yes
+    toc_float: yes
+    theme: cosmo
+    code_folding: hide
+    code_download: no
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+# ---- Load Packages ----
+#list of packages
+
+
+library(tidyverse)
+library(data.table)
+library(sf)
+library(viridis)
+library(viridisLite)
+#library(translateR)
+library(kableExtra)
+library(leaflet)
+library(leaflet.extras)
+library(lubridate)
+library(mapview)
+
+# ---- Load Graphic Palettes ----
+
+# Load a ggplot theme and a color palette
+
+plotTheme <- theme(
+  plot.title =element_text(size=12),
+  plot.subtitle = element_text(size=8),
+  plot.caption = element_text(size = 6),
+  axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
+  axis.text.y = element_text(size = 10),
+  axis.title.y = element_text(size = 10),
+  # Set the entire chart region to blank
+  panel.background=element_blank(),
+  plot.background=element_blank(),
+  #panel.border=element_rect(colour="#F0F0F0"),
+  # Format the grid
+  panel.grid.major=element_line(colour="#D0D0D0",size=.75),
+  axis.ticks=element_blank())
+
+mapTheme <- theme(plot.title =element_text(size=12),
+                  plot.subtitle = element_text(size=8),
+                  plot.caption = element_text(size = 6),
+                  axis.line=element_blank(),
+                  axis.text.x=element_blank(),
+                  axis.text.y=element_blank(),
+                  axis.ticks=element_blank(),
+                  axis.title.x=element_blank(),
+                  axis.title.y=element_blank(),
+                  panel.background=element_blank(),
+                  panel.border=element_blank(),
+                  panel.grid.major=element_line(colour = 'transparent'),
+                  panel.grid.minor=element_blank(),
+                  legend.direction = "vertical", 
+                  legend.position = "right",
+                  plot.margin = margin(1, 1, 1, 1, 'cm'),
+                  legend.key.height = unit(1, "cm"), legend.key.width = unit(0.2, "cm"))
+
+palette <- c("#10142A", "#47E9B9", "#F55D60", "#71EA48", "#C148EA", "#EAC148")
+viridisPalette <- c("#440154", "#73D055", "#F55D60", "#238A8D", "#FDE725")
+CityPalette <- c("#A230C2", "#3AEAB8", "#F9C700", "#0069FC", "#EF3340", "#bdbdbd") # Berlin, NYC, Tokyo, Stockholm, Montreal, Sydney
+```
+
+```{r load_cfp_data, message=FALSE, warning=FALSE, results = 'hide'}
+
+# LOAD IN THE CFP DATA FOR COMPARISONS
+
+# Read in district aggregates
+d1_aggregates <- st_read("~/GitHub/CFP/unified__city_data/district_aggregates/d1_aggregates_11_16_22.geojson") %>%
+  st_as_sf(crs = 4326)
+
+d2_aggregates <- st_read("~/GitHub/CFP/unified__city_data/district_aggregates/d2_aggregates_06_15_23.geojson") %>%
+  st_as_sf(crs = 4326) %>%
+  rename(d2_name = d2_name.x)
+
+
+# Read in venues
+main_venue_data <- read.csv("~/GitHub/CFP/unified__city_data/main_venue_data_final_testSydney.csv") %>%
+  mutate(city = ifelse(city == "Solna", "Stockholm", city))
+
+# Read in EPSG information
+
+source("~/GitHub/CFP/unified__city_data/epsg_list.R")
+
+
+```
+
+```{r load_nash_data, message=FALSE, warning=FALSE, results = 'hide'}
+
+# LOAD IN THE NASH DATA
+
+# Read in district aggregates
+d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/metro/Subareas/Subareas/Subareas.shp") %>%
+  st_as_sf(crs = 4326)
+
+d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregates/d2_aggregates_06_15_23.geojson") %>%
+  st_as_sf(crs = 4326) %>%
+  rename(d2_name = d2_name.x)
+
+
+# Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 7/18/2023
+nash_venue_data <- read.csv("~/GitHub/Nashville_IMV/data/venue_tables/venue_table_detailed_7_3.csv")
+
+
+```
+
+```{r create_basemaps}
+library(ggmap)
+
+
+ll <- function(dat, proj4 = 4326){
+st_transform(dat, proj4)
+}
+```
+
+```{r message = FALSE, eval=FALSE}
+base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash),10000)))),
+                    force = TRUE, maptype = "toner-lite", zoom = 11)
+
+base_map2 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash),10000)))),
+                    force = TRUE, maptype = "toner-lite", zoom = 12)
+
+base_map3 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash),10000)))),
+                    force = TRUE, maptype = "toner-lite", zoom = 13)
+
 ```
 
 # 1. Key Takeaways
@@ -45,21 +170,568 @@ We created variables for knn sq ft costs, dist to CBD centroid, joined venues to
 
 Let's give descriptive statistics for the venue database
 
+## 4.1. Total number of venues
+
 - How many venues
 
-- Where are they located? - Fishnet heatmap, Point map, Symbologized by planning area.
+```{r}
 
-- How many are independently owned and booked?
 
-- Histogram of capacities (facetted by indie/non)
+```
+
+### 4.1.2. Number of IMVs
+
+
+## 4.2. Venue locations
+
+- Where are they located? - Point map, Symbologized by planning area. 
+
+NOTE - we should symbologize IMV status in these
+
+### 4.2.1. Interactive Map 
+
+```{r leaflet, message= FALSE, warning=FALSE}
+
+l <- leaflet() %>% 
+  addProviderTiles(providers$Esri.WorldTopoMap) %>%
+  setView(lng = mean(nash_venue_data$x, na.rm = TRUE),
+          lat = mean(nash_venue_data$y, na.rm = TRUE),
+          zoom = 10) %>%
+  addScaleBar(position = "topleft") %>%
+  addCircleMarkers(data= nash_venue_data,
+                   lng=~x, 
+                   lat=~y,
+                   radius =~ 1, 
+                   fillOpacity =~ 1,
+                   color =~ "blue",
+                   label=~paste(name, address))
+
+l
+
+```
+### 4.2.2. Heat map (ggplot)
+
+NOTE - needs a spatial data layer for the county behind it.
+
+```{r make_fishnet}
+fishnet <- st_make_grid(d1_aggregates_nash %>%
+                          st_transform(crs = 2274), 
+                        cellsize = 5280) %>% #size in feet
+  st_sf() %>%
+  st_transform(crs = 4326)
+
+fishnet <- fishnet[d1_aggregates_nash %>%
+                          st_transform(crs = 4326),] %>%
+  mutate(uniqueID = rownames(.)) %>%
+  select(uniqueID) %>%
+  mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+         lat=map_dbl(geometry, ~st_centroid(.x)[[2]]))
+
+# Join the fishet to the points
+
+fishnet <- st_join(fishnet, 
+                nash_venue_data %>%
+                  filter(is.na(x)== FALSE,
+                         is.na(y)== FALSE) %>%
+                  st_as_sf(coords = c("x", "y"), crs = 4326), 
+                join = st_intersects, 
+                left = TRUE) %>%
+  select(uniqueID, X) %>%
+  group_by(uniqueID) %>% 
+  summarise(n_venues = n_distinct(X, na.rm = TRUE)) %>%
+  #mutate(n = ifelse(n == 1, 0, n)) %>%
+  #rename(n_venues = n) %>%
+  as.data.frame() %>%
+  select(-geometry) %>%
+  left_join(fishnet, .)
+```
+
+```{r fishnet_map, warning = FALSE, message = FALSE}
+
+# Make sure you set the labels here to reflect the actual max density by cell
+
+max(fishnet$n_venues)
+
+ggplot()+
+  geom_sf(data = d1_aggregates_nash,
+          fill = '#f0f0f0', 
+          color = 'white')+
+  geom_sf(data = fishnet %>%
+            filter(n_venues >0), 
+          aes(fill = n_venues),
+          color = "transparent",
+          alpha = 0.4)+
+  scale_fill_viridis('VENUES/\nmi^2', direction = -1,
+                     limits=c(1,max(fishnet$n_venues)), breaks=c(1, max(fishnet$n_venues)),
+                     labels=c("1",max(fishnet$n_venues)))+
+  labs(
+    title = "VENUE DENSITY - Nashville, 2023",
+    subtitle = "",
+    caption = "Data: PennPraxis, Metro Nashville")+
+  mapTheme
+```
+```{r fishnet_w_basemap}
+ggmap(base_map1) + 
+ geom_sf(data = ll(fishnet %>%
+            filter(n_venues >0)),
+            inherit.aes = TRUE,
+          aes(fill = n_venues),
+          color = "transparent",
+          alpha = 0.4)+
+  scale_fill_viridis('VENUES/\nmi^2', direction = -1,
+                     limits=c(1,max(fishnet$n_venues)), breaks=c(1, max(fishnet$n_venues)),
+                     labels=c("1",max(fishnet$n_venues)))+
+  labs(
+    title = "VENUE DENSITY - Nashville / Davidson County, 2023",
+    subtitle = "",
+    caption = "Data: PennPraxis, Metro Nashville")+
+  mapTheme
+```
+
+### 4.2.3. Point Map (static)
+
+
+### 4.2.4. Map by Planning District (count)
+
+TO DO ONCE d1_aggregates_nash is set
+
+
+## 4.3. IMV Status
+
+## 4.3.1. Independent Ownership
+
+```{r}
+ggplot(data = nash_venue_data %>%
+         filter(is.na(ownership_structure) == FALSE))+
+  geom_bar(aes(ownership_structure), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Q: Is the venue independently owned and operated?",
+    subtitle = "Independence - no association with another business through common ownership\n or affiliation (sharing of employees, resources, branding etc.,)",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+```
+
+## 4.3.2. Corporate Function
+
+```{r}
+ggplot(data = nash_venue_data %>%
+         filter(is.na(independent_booking) == FALSE))+
+  geom_bar(aes(independent_booking), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Are booking or promotion contracted to corporate partners? ",
+    subtitle = "",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+```
+
+```{r}
+ggplot(data = nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(IMV), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "IMV Status",
+    subtitle = "Independent Ownership Structure and Independent Booking & Promotion",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+```
+
+```{r}
+ggplot(data = nash_venue_data %>%
+         mutate(ownership_structure = ifelse(ownership_structure == "1. Yes",
+                                             "Independently Owned & Operated", 
+                                             "Non-Indie Owned or No Data")))+
+  geom_bar(aes(independent_booking), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "IMV Status",
+    subtitle = "Are booking or promotion contracted to corporate partners?",
+    x="Facetted by Ownership Structure",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_wrap(~ownership_structure)+
+  plotTheme
+```
+
+## 4.4. Capacity
+
+### 4.4.1. Histogram of capacity
+
+```{r community_histogram}
+ggplot(data = nash_venue_data %>%
+         mutate(capacity = as.numeric(capacity)) %>%
+         filter(capacity < 5000))+
+  geom_histogram(aes(capacity), fill = CityPalette[6], alpha = 0.6, binwidth = 250)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Capacity",
+    subtitle = "Capacities Over 5000 are removed",
+    x="",
+    y="Occupants",
+    #fill = "CFP City",
+    caption = "Data: Nashville Fire Dept")+
+  plotTheme
+
+```
+
+### 4.4.2. Capacity by IMV status
+
+```{r}
+ggplot(data = nash_venue_data %>%
+         mutate(capacity = as.numeric(capacity)) %>%
+         filter(capacity < 5000) %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_histogram(aes(capacity), fill = CityPalette[6], alpha = 0.6, binwidth = 250)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Capacity",
+    subtitle = "Capacities Over 5000 are removed",
+    x="",
+    y="Occupants",
+    #fill = "CFP City",
+    caption = "Data: Nashville Fire Dept")+
+  facet_wrap(~IMV)+
+  plotTheme
+```
+
+```{r}
+nash_venue_data %>%
+         mutate(capacity = as.numeric(capacity)) %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")) %>%
+  group_by(IMV) %>%
+  summarize(total_capacity = sum(capacity, na.rm = TRUE),
+            median_capacity = median(capacity, na.rm = TRUE)) %>%
+  kable() %>%
+  kable_styling()
+
+```
+
+### 4.4.3. Geography of Occupancy
 
 - Map of occupancies (e.g. occupant load per fishnet cell or per planning area)
 
-- What percentage of total capacity is independent vs. corporate?
+## 4.5. Venue Age
+
+```{r}
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(years_operating), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Years Operating",
+    subtitle = "",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(years_operating), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Years Operating",
+    subtitle = "",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+## 4.6. Events Per Month
+
+```{r}
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(events_per_month), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Events Per Month",
+    subtitle = "",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(events_per_month), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Events Per Month",
+    subtitle = "",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+## 4.7. Artist Payment
+
+```{r}
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(funding_source), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Means of Payment",
+    subtitle = "",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(funding_source), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Means of Payment",
+    subtitle = "",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+## 4.6. Programming
 
 - Bar plots of programming variables (facetted by indie/non)
 
-- What is the distribution of programming variables?
+### 4.6.1. Experimentation
+
+```{r}
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(experimentation), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Experimentation Likelihood",
+    subtitle = "Q: Compared to other venues in the city: Is this venue a platform for niche or experimental trends, sounds and art forms? Is it a place for experimental performers or extraordinary event concepts?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(experimentation), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Experimentation Likelihood",
+    subtitle = "Q: Compared to other venues in the city: Is this venue a platform for niche or experimental trends, sounds and art forms? Is it a place for experimental performers or extraordinary event concepts?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+### 4.6.2. Music as Main Purpose
+
+```{r}
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(purpose), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Main Purpose",
+    subtitle = "Q: Is the music program the main purpose why people attend this venue, and not e.g. food, drink, products?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(purpose), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Main Purpose",
+    subtitle = "Q: Is the music program the main purpose why people attend this venue, and not e.g. food, drink, products?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+
+### 4.6.3. Interdisciplinarity
+
+```{r}
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Interdisciplinarity",
+    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Interdisciplinarity",
+    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+### 4.6.4. Community Focus
+
+
+```{r}
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Interdisciplinarity",
+    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Interdisciplinarity",
+    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+### 4.6.5. Promoting Events
+
+
+```{r}
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Interdisciplinarity",
+    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  plotTheme
+
+ggplot(nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")))+
+  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Interdisciplinarity",
+    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+
+## 4.7. CFP Comparisons
 
 - How does this compare to other cities in CFP database?
 
@@ -91,7 +763,7 @@ Let's give descriptive statistics for the venue database
 
 # 7. Venues and Threats
 
-- What are the venues listed as threatened, where are they? What are their characteristics?
+- What are the venues listed as threatened, where are they? (map) What are their characteristics?
 
 - What properties have the highest disparity between estimated square footage value and assessed value?
 
