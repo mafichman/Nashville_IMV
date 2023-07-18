@@ -13,6 +13,12 @@ output:
     toc: yes
 ---
 
+
+NOTES AND TO-DO's:
+
+- Run this with real Nashville d1 aggregates
+- Need to deal more in percentages - overall numbers of IMV vs non-IMV make graphic comparisons tough
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -31,6 +37,7 @@ library(leaflet)
 library(leaflet.extras)
 library(lubridate)
 library(mapview)
+library(DT)
 
 # ---- Load Graphic Palettes ----
 
@@ -169,6 +176,13 @@ We created variables for knn sq ft costs, dist to CBD centroid, joined venues to
 # 4. Venue Database
 
 Let's give descriptive statistics for the venue database
+
+Searchable database
+
+```{r}
+datatable(nash_venue_data, 
+          options = list(pageLength = 10))
+```
 
 ## 4.1. Total number of venues
 
@@ -664,11 +678,11 @@ ggplot(nash_venue_data %>%
                                         ownership_structure == "1. Yes",
                                       "IMV",
                                       "Non-IMV")))+
-  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  geom_bar(aes(community_focus), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Interdisciplinarity",
-    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    title = "Community Focus",
+    subtitle = "Q: Is the venue likely to be any of the following... a consistent platform for a niche genre, a space for underrepresented communities or music scenes, a neighbourhood community hub, and not e.g. walk in tourists?",
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
@@ -679,11 +693,11 @@ ggplot(nash_venue_data %>%
                                         ownership_structure == "1. Yes",
                                       "IMV",
                                       "Non-IMV")))+
-  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  geom_bar(aes(community_focus), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Interdisciplinarity",
-    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    title = "Community Focus",
+    subtitle = "Q: Is the venue likely to be any of the following... a consistent platform for a niche genre, a space for underrepresented communities or music scenes, a neighbourhood community hub, and not e.g. walk in tourists?",
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
@@ -702,11 +716,11 @@ ggplot(nash_venue_data %>%
                                         ownership_structure == "1. Yes",
                                       "IMV",
                                       "Non-IMV")))+
-  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  geom_bar(aes(event_promotion), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Interdisciplinarity",
-    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    title = "Promoting Artistic Content",
+    subtitle = "Q: Is the promotion and marketing of this space focused on artistic content (artists, lineups, performances)?",
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
@@ -717,11 +731,11 @@ ggplot(nash_venue_data %>%
                                         ownership_structure == "1. Yes",
                                       "IMV",
                                       "Non-IMV")))+
-  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  geom_bar(aes(event_promotion), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
     title = "Interdisciplinarity",
-    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
+    subtitle = "Q: Is the promotion and marketing of this space focused on artistic content (artists, lineups, performances)?",
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
