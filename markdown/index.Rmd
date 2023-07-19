@@ -133,7 +133,7 @@ st_transform(dat, proj4)
 }
 ```
 
-```{r message = FALSE, eval=FALSE}
+```{r message = FALSE}
 base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash),10000)))),
                     force = TRUE, maptype = "toner-lite", zoom = 11)
 
@@ -285,7 +285,7 @@ ggplot()+
   mapTheme
 ```
 ```{r fishnet_w_basemap}
-ggmap(base_map1) + 
+ggmap(base_map1) +
  geom_sf(data = ll(fishnet %>%
             filter(n_venues >0)),
             inherit.aes = TRUE,
@@ -747,7 +747,7 @@ ggplot(nash_venue_data %>%
 
 ## 4.7. CFP Comparisons
 
-- How does this compare to other cities in CFP database?
+- How do some important metrics compare to other cities in CFP database?
 
 # 5. Venues and The City
 
@@ -779,12 +779,39 @@ ggplot(nash_venue_data %>%
 
 - What are the venues listed as threatened, where are they? (map) What are their characteristics?
 
+```{r}
+nash_venue_data %>%
+  filter(threats_neighbors == 1 |
+           threats_cost == 1 |
+           threats_licensing == 1) %>%
+  select(name, address_admin, APN, threats_neighbors, threats_cost, threats_licensing) %>%
+  kable() %>%
+  kable_styling()
+  
+```
+
 - What properties have the highest disparity between estimated square footage value and assessed value?
 
 # 8. Change in Nashville
 
 - Map of change in rents by census tract (over 10 years)
 
+- Price per sqft by grid cell in Nashville (based on cadastral data)
+
 - Identification of development "hot spots" and related venues
 
 - What are the areas of opportunity (e.g. can we ID relatively lower rent areas with high percentages of young adults, reasonable proximity to downtown?)
+
+# 9. Maps for report
+
+- Venue profile accompaniments (shows parcel and neighborhood context)
+
+Here is an example - make a ggbasemap with a specific buffer area around the parcel (identified in the code by APN) and then just map the parcel.
+
+```{r}
+
+```
+
+- Broader context maps (e.g. whole city with venues and some basemap stuff?)
+
+- Area maps for any geographic focus (e.g. North Nashville)
