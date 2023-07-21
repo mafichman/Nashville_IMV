@@ -885,6 +885,7 @@ base_map_3rd_and_lindsley <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_
                                                                   300)))),
                     force = TRUE, maptype = "toner-lite", zoom = 16)
 ```
+
 ```{r}
 ggmap(base_map_3rd_and_lindsley) +
  geom_sf(data = ll(nash_venue_data %>%
@@ -895,6 +896,23 @@ ggmap(base_map_3rd_and_lindsley) +
             inherit.aes = FALSE, 
          color = "red",
          size = 2)+
+  labs(
+    title = "Focus Venue - 3rd and Lindsley",
+    subtitle = "",
+    caption = "Data: PennPraxis, Metro Nashville")+
+  mapTheme
+```
+
+```{r}
+ggmap(base_map_3rd_and_lindsley) +
+ geom_sf(data = ll(right_join(parcels,
+                             nash_venue_data %>%
+                     filter(name == "3rd & Lindsley")) %>%
+                     st_transform(4326)),
+            inherit.aes = FALSE, 
+         color = "red",
+         fill = "red",
+         alpha = 0.4)+
   labs(
     title = "Focus Venue - 3rd and Lindsley",
     subtitle = "",
