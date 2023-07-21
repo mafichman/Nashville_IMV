@@ -137,12 +137,6 @@ st_transform(dat, proj4)
 base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash),10000)))),
                     force = TRUE, maptype = "toner-lite", zoom = 11)
 
-base_map2 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash),10000)))),
-                    force = TRUE, maptype = "toner-lite", zoom = 12)
-
-base_map3 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash),10000)))),
-                    force = TRUE, maptype = "toner-lite", zoom = 13)
-
 ```
 
 # 1. Key Takeaways
@@ -189,7 +183,7 @@ datatable(nash_venue_data,
 - How many venues
 
 ```{r}
-
+nrow(nash_venue_data)
 
 ```
 
@@ -230,7 +224,7 @@ NOTE - needs a spatial data layer for the county behind it.
 ```{r make_fishnet}
 fishnet <- st_make_grid(d1_aggregates_nash %>%
                           st_transform(crs = 2274), 
-                        cellsize = 5280) %>% #size in feet
+                        cellsize = 5280) %>% #size in feet - half mile
   st_sf() %>%
   st_transform(crs = 4326)
 
@@ -798,6 +792,82 @@ nash_venue_data %>%
 
 - Price per sqft by grid cell in Nashville (based on cadastral data)
 
+```{r}
+parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4326)
+```
+
+Filtering non-zero sales since 2020, joining to fishnet and averaging sales price by sq footage
+
+```{r}
+fishnet_parcels <- st_make_grid(d1_aggregates_nash %>%
+                          st_transform(crs = 2274), 
+                        cellsize = 5280) %>% #size in feet - half mile
+  st_sf() %>%
+  st_transform(crs = 4326)
+
+fishnet_parcels <- fishnet_parcels[d1_aggregates_nash %>%
+                          st_transform(crs = 4326),] %>%
+  mutate(uniqueID = rownames(.)) %>%
+  select(uniqueID) %>%
+  mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+         lat=map_dbl(geometry, ~st_centroid(.x)[[2]]))
+
+# Join the fishet to the points
+
+fishnet_parcels <- st_join(fishnet_parcels, 
+                parcels %>%
+                  filter(SalePrice > 0,
+                         year(ymd(OwnDate))> 2020,
+                         st_is_valid(.)) %>%
+                  #sample_n(1000) %>%
+                  mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+                         lat=map_dbl(geometry, ~st_centroid(.x)[[2]])) %>%
+                  filter(is.na(lon)== FALSE,
+                         is.na(lat)== FALSE) %>%
+                  st_as_sf(coords = c("lon", "lat"), crs = 4326), 
+                join = st_intersects, 
+                left = TRUE) %>%
+  select(uniqueID, TotlAppr, starea) %>%
+  group_by(uniqueID) %>% 
+  summarise(medianAssessment = median(TotlAppr/starea, na.rm = TRUE)) %>%
+  #mutate(n = ifelse(n == 1, 0, n)) %>%
+  #rename(n_venues = n) %>%
+  as.data.frame() %>%
+  select(-geometry) %>%
+  left_join(fishnet_parcels, .)
+```
+
+```{r fishnet_map, warning = FALSE, message = FALSE}
+
+# Make sure you set the labels here to reflect the actual max density by cell
+
+max(fishnet_parcels$medianAssessment)
+
+ggplot()+
+  geom_sf(data = fishnet_parcels %>%
+            filter(is.na(medianAssessment) == FALSE), 
+          aes(fill = medianAssessment),
+          color = "transparent",
+          alpha = 0.4)+
+ scale_fill_viridis('Price sqft', direction = -1)+
+  geom_sf(data = d1_aggregates_nash %>%
+            st_transform(4326), fill = "transparent")+
+  geom_point(data = nash_venue_data %>%
+         mutate(IMV = ifelse(independent_booking == "3. Never" &
+                                        ownership_structure == "1. Yes",
+                                      "IMV",
+                                      "Non-IMV")) %>%
+           filter(IMV == "IMV"),
+             aes(x = x, y = y, color = IMV),
+             size = 1.75,
+             alpha = 0.5)+
+  labs(
+    title = "Median Sale Price per Square Foot, 2021-23",
+    subtitle = "",
+    caption = "Data: PennPraxis, Metro Nashville")+
+  mapTheme
+```
+
 - Identification of development "hot spots" and related venues
 
 - What are the areas of opportunity (e.g. can we ID relatively lower rent areas with high percentages of young adults, reasonable proximity to downtown?)
@@ -809,7 +879,27 @@ nash_venue_data %>%
 Here is an example - make a ggbasemap with a specific buffer area around the parcel (identified in the code by APN) and then just map the parcel.
 
 ```{r}
-
+base_map_3rd_and_lindsley <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(nash_venue_data %>%
+                                                                                filter(name == "3rd & Lindsley") %>%
+                                                                                  st_as_sf(coords = c("x", "y"), crs = 4269) %>% st_transform(4326)),
+                                                                  300)))),
+                    force = TRUE, maptype = "toner-lite", zoom = 16)
+```
+```{r}
+ggmap(base_map_3rd_and_lindsley) +
+ geom_sf(data = ll(nash_venue_data %>%
+                     filter(name == "3rd & Lindsley") %>%
+                     st_as_sf(coords = c("x", "y"), 
+                              crs = 4269) %>%
+                     st_transform(4326)),
+            inherit.aes = FALSE, 
+         color = "red",
+         size = 2)+
+  labs(
+    title = "Focus Venue - 3rd and Lindsley",
+    subtitle = "",
+    caption = "Data: PennPraxis, Metro Nashville")+
+  mapTheme
 ```
 
 - Broader context maps (e.g. whole city with venues and some basemap stuff?)
