@@ -64,39 +64,53 @@ API_key = "c03e04624fa724c446d835b3c313e3f11aa54c2d"
 census_api_key(API_key, overwrite = TRUE)
 
 ## Look through existing acs variables and choose a few to examine: filter geography to block group
-#acs_variable_list.2020 <- load_variables(2020,"acs5")
+acs_variable_list.2020 <- load_variables(2020,"acs5")
+acs_variable_list.2010 <- load_variables(2010,"acs5")
 
-## Set up a list of variables to grab
-acs_vars <- c("B01001_001E", # ACS total Pop estimate
+## Set up lists of variables to grab
+acs_vars_20 <- c("B01001_001E", # ACS total Pop estimate
               "B06011_001E", # Median income in past 12 months
               "B09021_008E", # 18-34 yr olds estimate
-              "B25003_003E", # total renter occupied estimate
+              "B25032_013E", # total renter-occupied units estimate
               "B25031_001E" # median rent estimate
+              )
+
+acs_vars_10 <- c("B01001_001E", # ACS total Pop estimate
+              "B06011_001E", # Median income in past 12 months
+              "B21005_002E", # 18-34 yr olds estimate
+              "B25013_007E", # total renter-occupied units estimate
+              "B25064_001E" # median rent estimate
               )
 
 ## Grab block-level for Davidson County: 2020 and 2010
 acs2020 <- get_acs(geography = "tract",
                    year = 2020,
-                   variables = acs_vars,
+                   variables = (acs_vars_20),
                    geometry = TRUE,
                    state = "TN",
                    county = "Davidson",
                    output = "wide") %>%
-  select(GEOID, NAME, acs_vars) %>%
+  select(GEOID, NAME, acs_vars_20) %>%
   rename(total_pop_est = B01001_001E,
-         median_income_est = B06011_001E) %>%
+         median_income_est = B06011_001E,
+         pop_18_34_est = B09021_008E,
+         rental_units_est = B25032_013E,
+         med_rent_est = B25031_001E) %>%
   mutate(year = 2020)
 
 acs2010 <- get_acs(geography = "tract",
                    year = 2010,
-                   variables = acs_vars,
+                   variables = all_of(acs_vars_10),
                    geometry = TRUE,
                    state = "TN",
                    county = "Davidson",
                    output = "wide") %>%
-  select(GEOID, NAME, acs_vars) %>%
+  select(GEOID, NAME, acs_vars_10) %>%
   rename(total_pop_est = B01001_001E,
-         median_income_est = B06011_001E) %>%
+         median_income_est = B06011_001E,
+         pop_18_34_est = B21005_002E,
+         rental_units_est = B25013_007E,
+         med_rent_est = B25064_001E) %>%
   mutate(year = 2010)
 
 ## combining tables in "long data" form - not used currently
@@ -105,7 +119,8 @@ acs2010 <- get_acs(geography = "tract",
 
 ```{r}
 ## loading "parent" geography: city council districts (the match up to census block boundaries and )
-council_districts = st_read("https://data.nashville.gov/resource/iw7r-m8qr.geojson") %>% select(council_district, geometry) %>% st_transform(crs=4269)
+#council_districts = st_read("https://data.nashville.gov/resource/iw7r-m8qr.geojson") %>% select(council_district, geometry) %>% st_transform(crs=4269)
+planning_districts = st_read("~/Github/Nashville_IMV/data/metro/Subareas/Subareas.shp") %>% st_transform(crs=4269)
 ```
 
 Idea is 2 different "big" tables: one organized by census tract and one organized by venue (for ease of different access)
@@ -116,37 +131,76 @@ census10 = acs2010
 census10[is.na(census10)] <- 0 #allow for calculations to be made
 
 ## calculate new columns (in this case, area, population density, and preparation to calculate average median income)
-census10$area10 = st_area(census10)
-census10 = census10 %>% mutate(pop_dens10 = total_pop_est/area10, med_incxpop = median_income_est*total_pop_est)
+census10$area10 = st_area(census10) # this is in sq meters
+census10 = census10 %>% mutate(pop_dens10 = total_pop_est/area10, med_incxpop = median_income_est*total_pop_est, perc_youth = round((pop_18_34_est/total_pop_est)*100,1), med_rentxpop = med_rent_est*total_pop_est)
 
 ## join blocks to council districts and aggregate block data by council districts
-council10 = st_join(council_districts,census10) %>% group_by(council_district) %>% summarize(tot_pop10 = sum(total_pop_est), avg_med_inc10 = (sum(med_incxpop)/tot_pop10), avg_dens10 = mean(pop_dens10)*2590000) #I made distance in square miles, not meters (that's the *2590000)
+plan10 = st_join(planning_districts,census10) %>% group_by(Communit_1) %>% summarize(tot_pop10 = sum(total_pop_est), avg_med_inc10 = (sum(med_incxpop)/tot_pop10), avg_dens10 = mean(pop_dens10), tot_youth10 = sum(pop_18_34_est), perc_youth_10 = mean(perc_youth), avg_med_rent10 = (sum(med_rentxpop)/tot_pop10), tot_rent_HH_10 = sum(rental_units_est))
 
 ## repeat process with 2020 data
 census20 = acs2020
 census20[is.na(census20)] <- 0
 census20$area20 = st_area(census20)
-census20 = census20 %>% mutate(pop_dens20 = total_pop_est/area20, med_incxpop = median_income_est*total_pop_est)
-council20 = st_join(council_districts,census20) %>% group_by(council_district) %>% summarize(tot_pop20 = sum(total_pop_est), avg_med_inc20 = (sum(med_incxpop)/tot_pop20), avg_dens20 = mean(pop_dens20)*2590000)
+census20 = census20 %>% mutate(pop_dens20 = total_pop_est/area20, med_incxpop = median_income_est*total_pop_est, perc_youth = round((pop_18_34_est/total_pop_est)*100,1), med_rentxpop = med_rent_est*total_pop_est)
+plan20 = st_join(planning_districts,census20) %>% group_by(Communit_1) %>% summarize(tot_pop20 = sum(total_pop_est), avg_med_inc20 = (sum(med_incxpop)/tot_pop20), avg_dens20 = mean(pop_dens20), tot_youth20 = sum(pop_18_34_est), perc_youth_20 = mean(perc_youth), avg_med_rent20 = (sum(med_rentxpop)/tot_pop20), tot_rent_HH_20 = sum(rental_units_est))
 
 ## create dataset with council districts containing aggregated census data from both years AND further calculated columns (percent change population, percent change average median income, percent change in population density)
-coun_dist = 
-  left_join(st_drop_geometry(council10), st_drop_geometry(council20), by="council_district") %>%
-  left_join(.,council_districts,by="council_district") %>%
+plan_dist = 
+  left_join(st_drop_geometry(plan10), st_drop_geometry(plan20), by="Communit_1") %>%
+  left_join(.,planning_districts,by="Communit_1") %>%
   st_as_sf() %>% 
-  mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1))
+  mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1), perc_chg_med_rent = round(((avg_med_rent20-avg_med_rent10)/avg_med_rent10)*100,1), perc_chg_youth = round(((perc_youth_20-perc_youth_10)/perc_youth_10)*100,1))
+```
+
+
+```{r}
+## create new table of census acs data to manipulate
+# census10 = acs2010
+# census10[is.na(census10)] <- 0 #allow for calculations to be made
+
+## calculate new columns (in this case, area, population density, and preparation to calculate average median income)
+# census10$area10 = st_area(census10) # this is in sq meters
+# census10 = census10 %>% mutate(pop_dens10 = total_pop_est/area10, med_incxpop = median_income_est*total_pop_est, perc_youth = round((pop_18_34_est/total_pop_est)*100,1), med_rentxpop = med_rent_est*total_pop_est)
+
+## join blocks to council districts and aggregate block data by council districts
+# council10 = st_join(council_districts,census10) %>% group_by(council_district) %>% summarize(tot_pop10 = sum(total_pop_est), avg_med_inc10 = (sum(med_incxpop)/tot_pop10), avg_dens10 = mean(pop_dens10), tot_youth10 = sum(pop_18_34_est), perc_youth_10 = mean(perc_youth), avg_med_rent10 = (sum(med_rentxpop)/tot_pop10), tot_rent_HH_10 = sum(rental_units_est))
+
+## repeat process with 2020 data
+# census20 = acs2020
+# census20[is.na(census20)] <- 0
+# census20$area20 = st_area(census20)
+# census20 = census20 %>% mutate(pop_dens20 = total_pop_est/area20, med_incxpop = median_income_est*total_pop_est, perc_youth = round((pop_18_34_est/total_pop_est)*100,1), med_rentxpop = med_rent_est*total_pop_est)
+# council20 = st_join(council_districts,census20) %>% group_by(council_district) %>% summarize(tot_pop20 = sum(total_pop_est), avg_med_inc20 = (sum(med_incxpop)/tot_pop20), avg_dens20 = mean(pop_dens20), tot_youth20 = sum(pop_18_34_est), perc_youth_20 = mean(perc_youth), avg_med_rent20 = (sum(med_rentxpop)/tot_pop20), tot_rent_HH_20 = sum(rental_units_est))
+
+## create dataset with council districts containing aggregated census data from both years AND further calculated columns (percent change population, percent change average median income, percent change in population density)
+# coun_dist = 
+#   left_join(st_drop_geometry(council10), st_drop_geometry(council20), by="council_district") %>%
+#   left_join(.,council_districts,by="council_district") %>%
+#  st_as_sf() %>% 
+#  mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1), perc_chg_med_rent = round(((avg_med_rent20-avg_med_rent10)/avg_med_rent10)*100,1), perc_chg_youth = round(((perc_youth_20-perc_youth_10)/perc_youth_10)*100,1))
 ```
 
 ```{r}
 ## aggregating venue data by council district area and creating table of council districts with census acs and venue data
-coun_dist_venues = st_join(coun_dist, venues) %>% group_by(council_district) %>% 
+plan_dist_venues = st_join(plan_dist, venues) %>% group_by(Communit_1) %>% 
   summarize(num_venues = n()) %>% #not sure why NAs are introduced
-  left_join(., st_drop_geometry(coun_dist), by="council_district")
+  left_join(., st_drop_geometry(plan_dist), by="Communit_1")
+```
+
+
+```{r}
+## aggregating venue data by council district area and creating table of council districts with census acs and venue data
+# coun_dist_venues = st_join(coun_dist, venues) %>% group_by(council_district) %>% 
+#  summarize(num_venues = n()) %>% #not sure why NAs are introduced
+#  left_join(., st_drop_geometry(coun_dist), by="council_district")
 ```
 
 ```{r}
 ## creating table of venues with census acs data (aggregated by council districts) added on
-venues_dist = st_join(venues,coun_dist)
+#venues_dist = st_join(venues,coun_dist)
+
+venues_dist = st_join(venues,plan_dist)
+
 ```
 
 ## Making Sense of Administrative Data
