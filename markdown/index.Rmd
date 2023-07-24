@@ -1,7 +1,7 @@
 ---
 title: "Nashville Venues Project Data Portal"
-author: "PennPraxis"
-date: "3/2/2023"
+author: "Michael Fichman & Sofia Fasullo for PennPraxis"
+date: "7/14/2023"
 output: 
   html_document:
     toc: true
@@ -13,24 +13,90 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# 1. Introduction
-
-What Is This Document
-
-**Michael Fichman**
-
-*University of Pennsylvania Weitzman School of Design*
-
-*Lecturer, Department of City and Regional Planning*
-
-*Research Associate, PennPraxis*
+# 1. Key Takeaways
 
 # 2. Data Sources
 
-# 3. Exploratory Analysis
+- IMV data set
 
-Let's start with a searchable database of business licenses and properties for the CST team
+- Chamber of Commerce Data (link)
 
-Alongside a mapview object where you can search around and find things (although mapview is not dynamic so there's no search bar functionality)
+- US Census
+
+- Nashville Metro Cadastral
+
+- Nashville Metro Parcels
+
+- Nashville Metro Fire Inspection Data
+
+- Nashville Planning Districts
+
+# 3. Methods
+
+What did we do?
+
+We collected the data set with liaisons, community members and desk research (this will be covered by VL in the report)
+
+We related each venue to it's APN number (a property identifier) and joined it to tax records, license records.
+
+We created variables for knn sq ft costs, dist to CBD centroid, joined venues to districts
 
 # 4. Venue Database
+
+Let's give descriptive statistics for the venue database
+
+- How many venues
+
+- Where are they located? - Fishnet heatmap, Point map, Symbologized by planning area.
+
+- How many are independently owned and booked?
+
+- Histogram of capacities (facetted by indie/non)
+
+- Map of occupancies (e.g. occupant load per fishnet cell or per planning area)
+
+- What percentage of total capacity is independent vs. corporate?
+
+- Bar plots of programming variables (facetted by indie/non)
+
+- What is the distribution of programming variables?
+
+- How does this compare to other cities in CFP database?
+
+# 5. Venues and The City
+
+- Venue zoning districts (bar plot)
+
+- Venue square foot sales values and gross sales values (histogram, inflation adjusted)
+
+- Venues by planning area / neighborhood
+
+- Surface map of real estate values by square foot with indie venues on top
+
+- k=5 mean square footage costs of recent sales (inflation adjusted) for indies
+
+- Relationship between programming scores and real estate value
+
+- Comparison to CFP cities - programming and real estate relationships
+
+- Programming, cost and relationship to distance to CBD
+
+# 6. Venues and Regulation
+
+- What kind of licenses are associated with these venues?
+
+- What about the ones that primarily hold shows (e.g. 10+ per month)
+
+# 7. Venues and Threats
+
+- What are the venues listed as threatened, where are they? What are their characteristics?
+
+- What properties have the highest disparity between estimated square footage value and assessed value?
+
+# 8. Change in Nashville
+
+- Map of change in rents by census tract (over 10 years)
+
+- Identification of development "hot spots" and related venues
+
+- What are the areas of opportunity (e.g. can we ID relatively lower rent areas with high percentages of young adults, reasonable proximity to downtown?)
