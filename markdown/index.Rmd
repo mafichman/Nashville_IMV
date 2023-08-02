@@ -141,6 +141,8 @@ base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggr
 
 # 1. Key Takeaways
 
+
+
 # 2. Data Sources
 
 - IMV data set
