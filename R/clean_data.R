@@ -86,7 +86,7 @@ APN_nomatch = left_join(manual_match_table, work_join_table, by = c("APN_Address
 ## simple table (use for all administrative and venue data joins), also rename to match CFP naming conventions
 venue_admin_key_table = select(APN_join2, c(name, APN_Address_Manual, APN)) %>% rename(address_admin=APN_Address_Manual)
 
-## venue table (all venue info and some parcel info, including coordinates)
+## join correct coordinate info
 venue_data_join = left_join(venue_admin_key_table, pop_venue_db, by="name") %>% rename(APN=APN.x) %>% select(-c(APN.y,street))
 
 venue_coordinates = APN_join2 %>% select(c(name,geometry))
@@ -94,7 +94,27 @@ venue_coordinates$y = st_coordinates(st_centroid(venue_coordinates$geometry))[,2
 venue_coordinates$x = st_coordinates(st_centroid(venue_coordinates$geometry))[,1]
 venue_coordinates = venue_coordinates %>% select(-geometry) %>% st_drop_geometry() 
 
-venue_data_done = left_join(select(venue_data_join,-c(y,x,address,address_admin.y)),venue_coordinates) %>% rename(address_admin=address_admin.x)
+venue_data = left_join(select(venue_data_join,-c(y,x,address,address_admin.y)),venue_coordinates) %>% rename(address_admin=address_admin.x)
+
+## reformat multiple-choice survey answers to numeric so they can be aggregated (all metadata is saved in the data dictionary)
+variables_to_ordinal = c("ownership_structure","independent_booking","events_per_month","years_operating","funding_source","interdisciplinarity","event_promotion","purpose","community_focus","creativity","experimentation")
+to_ordinal=function(vector){
+  v = case_when(substr(x,1,1)=="1"~1,substr(x,1,1)=="2"~2,substr(x,1,1)=="3"~3,substr(x,1,1)=="4"~4)
+  return(v)
+}
+venue_data$ownership_structure_ord = to_ordinal(venue_data$ownership_structure)
+venue_data$independent_booking_ord = to_ordinal(venue_data$independent_booking)
+venue_data$events_per_month_ord = to_ordinal(venue_data$events_per_month)
+venue_data$years_operating_ord = to_ordinal(venue_data$years_operating)
+venue_data$funding_source_ord = to_ordinal(venue_data$funding_source)
+venue_data$interdisciplinarity_ord = to_ordinal(venue_data$interdisciplinarity)
+venue_data$event_promotion_ord = to_ordinal(venue_data$event_promotion)
+venue_data$purpose = to_ordinal(venue_data$purpose_ord)
+venue_data$community_focus_ord = to_ordinal(venue_data$community_focus)
+venue_data$creativity_ord = to_ordinal(venue_data$creativity)
+venue_data$experimentation_ord = to_ordinal(venue_data$experimentation)
+
+venue_data_done = venue_data
 
 ## detailed table (all venue and parcel information) - lots of redundant info so commented out
 #detailed_table = left_join(venue_data_done,parcels,by= c("Admin_Address"="PropAddr","APN")) %>% unique()
