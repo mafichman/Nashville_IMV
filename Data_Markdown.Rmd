@@ -32,15 +32,12 @@ library(dplyr)
 ```
 Load venue datasets
 ```{r}
-## load venue data (last updated: 04/16/2023)
+## load venue data (last updated: 07/03/2023)
 
-venues = read.csv("~/GitHub/Nashville_IMV/data/venue_tables/venue_table_filled_4_16.csv") %>% st_as_sf( coords = c("x","y"), remove = FALSE,crs= 4269)
+venues = read.csv("~/GitHub/Nashville_IMV/data/venue_tables/venue_table_detailed_7_3.csv") %>% st_as_sf(coords = c("x","y"), remove = FALSE,crs= 4326, na.fail = FALSE)
 
 ## venue APN data (last updated: 04/16/2023) - use this dataset as a "key" for all tabular joins
 venue_admin_key_table = read.csv("~/GitHub/Nashville_IMV/data/venue_tables/simple_table_4_16.csv")
-
-## detailed venue table with survey results (last updated: 07/03/2023)
-venue_attrib = read.csv("~/GitHub/Nashville_IMV/data/venue_tables/venue_table_detailed_7_3.csv")
 
 ## data dictionary for detailed venue table
 data_dictionary_load = read.csv("~/Github/Nashville_IMV/data/venue_tables/data_dictionary_venue_detailed_7_3.csv", header=F)
@@ -96,7 +93,7 @@ acs2020 <- get_acs(geography = "tract",
          pop_18_34_est = B09021_008E,
          rental_units_est = B25032_013E,
          med_rent_est = B25031_001E) %>%
-  mutate(year = 2020)
+  mutate(year = 2020) %>% st_transform(4326)
 
 acs2010 <- get_acs(geography = "tract",
                    year = 2010,
@@ -111,7 +108,7 @@ acs2010 <- get_acs(geography = "tract",
          pop_18_34_est = B21005_002E,
          rental_units_est = B25013_007E,
          med_rent_est = B25064_001E) %>%
-  mutate(year = 2010)
+  mutate(year = 2010) %>% st_transform(4326)
 
 ## combining tables in "long data" form - not used currently
 #full_table <- rbind(acs2010, acs2020)
@@ -119,8 +116,9 @@ acs2010 <- get_acs(geography = "tract",
 
 ```{r}
 ## loading "parent" geography: city council districts (the match up to census block boundaries and )
-#council_districts = st_read("https://data.nashville.gov/resource/iw7r-m8qr.geojson") %>% select(council_district, geometry) %>% st_transform(crs=4269)
-planning_districts = st_read("~/Github/Nashville_IMV/data/metro/Subareas/Subareas.shp") %>% st_transform(crs=4269)
+#council_districts = st_read("https://data.nashville.gov/resource/iw7r-m8qr.geojson") %>% select(council_district, geometry) %>% st_transform(crs=4326)
+planning_districts = st_read("~/Github/Nashville_IMV/data/metro/Subareas/Subareas.shp") %>% st_transform(crs=4326)
+planning_districts$area = st_area(planning_districts)
 ```
 
 Idea is 2 different "big" tables: one organized by census tract and one organized by venue (for ease of different access)
@@ -154,46 +152,63 @@ plan_dist =
 
 
 ```{r}
-## create new table of census acs data to manipulate
-# census10 = acs2010
-# census10[is.na(census10)] <- 0 #allow for calculations to be made
-
-## calculate new columns (in this case, area, population density, and preparation to calculate average median income)
-# census10$area10 = st_area(census10) # this is in sq meters
-# census10 = census10 %>% mutate(pop_dens10 = total_pop_est/area10, med_incxpop = median_income_est*total_pop_est, perc_youth = round((pop_18_34_est/total_pop_est)*100,1), med_rentxpop = med_rent_est*total_pop_est)
-
-## join blocks to council districts and aggregate block data by council districts
-# council10 = st_join(council_districts,census10) %>% group_by(council_district) %>% summarize(tot_pop10 = sum(total_pop_est), avg_med_inc10 = (sum(med_incxpop)/tot_pop10), avg_dens10 = mean(pop_dens10), tot_youth10 = sum(pop_18_34_est), perc_youth_10 = mean(perc_youth), avg_med_rent10 = (sum(med_rentxpop)/tot_pop10), tot_rent_HH_10 = sum(rental_units_est))
-
-## repeat process with 2020 data
-# census20 = acs2020
-# census20[is.na(census20)] <- 0
-# census20$area20 = st_area(census20)
-# census20 = census20 %>% mutate(pop_dens20 = total_pop_est/area20, med_incxpop = median_income_est*total_pop_est, perc_youth = round((pop_18_34_est/total_pop_est)*100,1), med_rentxpop = med_rent_est*total_pop_est)
-# council20 = st_join(council_districts,census20) %>% group_by(council_district) %>% summarize(tot_pop20 = sum(total_pop_est), avg_med_inc20 = (sum(med_incxpop)/tot_pop20), avg_dens20 = mean(pop_dens20), tot_youth20 = sum(pop_18_34_est), perc_youth_20 = mean(perc_youth), avg_med_rent20 = (sum(med_rentxpop)/tot_pop20), tot_rent_HH_20 = sum(rental_units_est))
-
-## create dataset with council districts containing aggregated census data from both years AND further calculated columns (percent change population, percent change average median income, percent change in population density)
-# coun_dist = 
-#   left_join(st_drop_geometry(council10), st_drop_geometry(council20), by="council_district") %>%
-#   left_join(.,council_districts,by="council_district") %>%
-#  st_as_sf() %>% 
-#  mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1), perc_chg_med_rent = round(((avg_med_rent20-avg_med_rent10)/avg_med_rent10)*100,1), perc_chg_youth = round(((perc_youth_20-perc_youth_10)/perc_youth_10)*100,1))
-```
-
-```{r}
 ## aggregating venue data by council district area and creating table of council districts with census acs and venue data
-plan_dist_venues = st_join(plan_dist, venues) %>% group_by(Communit_1) %>% 
-  summarize(num_venues = n()) %>% #not sure why NAs are introduced
-  left_join(., st_drop_geometry(plan_dist), by="Communit_1")
-```
+variables_to_ordinal = c("ownership_structure","independent_booking","events_per_month","years_operating","funding_source","interdisciplinarity","event_promotion","purpose","community_focus","creativity","experimentation")
+to_ordinal=function(vector){
+  v = case_when(substr(x,1,1)=="1"~1,substr(x,1,1)=="2"~2,substr(x,1,1)=="3"~3,substr(x,1,1)=="4"~4)
+  return(v)
+}
+venues$ownership_structure_ord = to_ordinal(venues$ownership_structure)
+venues$independent_booking_ord = to_ordinal(venues$independent_booking)
+venues$events_per_month_ord = to_ordinal(venues$events_per_month)
+venues$years_operating_ord = to_ordinal(venues$years_operating)
+venues$funding_source_ord = to_ordinal(venues$funding_source)
+venues$interdisciplinarity_ord = to_ordinal(venues$interdisciplinarity)
+venues$event_promotion_ord = to_ordinal(venues$event_promotion)
+venues$purpose_ord = to_ordinal(venues$purpose)
+venues$community_focus_ord = to_ordinal(venues$community_focus)
+venues$creativity_ord = to_ordinal(venues$creativity)
+venues$experimentation_ord = to_ordinal(venues$experimentation)
 
 
-```{r}
-## aggregating venue data by council district area and creating table of council districts with census acs and venue data
-# coun_dist_venues = st_join(coun_dist, venues) %>% group_by(council_district) %>% 
-#  summarize(num_venues = n()) %>% #not sure why NAs are introduced
-#  left_join(., st_drop_geometry(coun_dist), by="council_district")
+
+plan_dist_venues = st_join(plan_dist, select(venues,-c(all_of(variables_to_ordinal),X,name,liaison,description,contact_name,contact_email,contact_telephone,address,street,genre,APN,url,zip,county,city,y,x))) %>% 
+#not sure why NAs are introduced  
+  group_by(Communit_1) %>% 
+  summarize(num_venues = n(),
+            avg_capacity = mean(as.numeric(capacity),na.rm=TRUE),
+            ownership_structure = mean(ownership_structure_ord,na.rm=TRUE),
+            independent_booking = mean(independent_booking_ord,na.rm=TRUE),
+            events_per_month = mean(events_per_month_ord,na.rm=TRUE),
+            years_operating = mean(years_operating_ord,na.rm=TRUE),
+            funding_source = mean(funding_source_ord,na.rm=TRUE),
+            interdisciplinarity = mean(interdisciplinarity_ord,na.rm=TRUE),
+            event_promotion = mean(event_promotion_ord,na.rm=TRUE),
+            purpose = mean(purpose_ord,na.rm=TRUE),
+            community_focus = mean(community_focus_ord,na.rm=TRUE),
+            creativity = mean(creativity_ord,na.rm=TRUE),
+            experimentation = mean(experimentation_ord,na.rm=TRUE),
+            threats_neighbors = sum(threats_neighbors,na.rm=TRUE),
+            threats_cost = sum(threats_cost,na.rm=TRUE),
+            threats_licensing = sum(threats_licensing,na.rm=TRUE),
+            venueType_club = sum(venueType_club,na.rm=TRUE),
+            venueType_disco = sum(venueType_disco,na.rm=TRUE),
+            venueType_openAir = sum(venueType_openAir,na.rm=TRUE),
+            venueType_concertHall = sum(venueType_concertHall,na.rm=TRUE),
+            venueType_theater = sum(as.numeric(venueType_theater),na.rm=TRUE),
+            venueType_cinema = sum(venueType_cinema,na.rm=TRUE),
+            venueType_musicBar = sum(venueType_musicBar,na.rm=TRUE),
+            venueType_gallery = sum(venueType_gallery,na.rm=TRUE),
+            venueType_restaurant = sum(venueType_restaurant,na.rm=TRUE),
+            venueType_warehouse = sum(venueType_warehouse,na.rm=TRUE),
+            venueType_arena = sum(venueType_arena,na.rm=TRUE),
+            venueType_shop = sum(venueType_shop,na.rm=TRUE),
+            venueType_studio = sum(venueType_studio,na.rm=TRUE)
+            ) %>% 
+  left_join(., st_drop_geometry(plan_dist), by="Communit_1") %>% mutate(density_venues = num_venues/area)
+
 ```
+
 
 ```{r}
 ## creating table of venues with census acs data (aggregated by council districts) added on
@@ -229,7 +244,7 @@ addresses_to_pull = venue_all_FD_data %>% filter(is.na(Location.Full.Address)) %
 Parcels dataset cleaning
 ```{r}
 ## load administrative data (very time consuming)
-parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4269)
+parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4326)
 
 venue_all_parcel_data = left_join(venue_admin_key_table,parcels,by= c("address_admin"="PropAddr","APN")) %>% unique()
 
