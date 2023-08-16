@@ -110,7 +110,7 @@ source("~/GitHub/CFP/unified__city_data/epsg_list.R")
 # LOAD IN THE NASH DATA
 
 # Read in district aggregates
-d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate.geojson") %>%
+d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v2.geojson") %>%
   st_as_sf(crs = 4326) %>%
   rename(venue_count = num_venues,
          d1_name = Communit_1)
@@ -121,7 +121,7 @@ d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregat
 
 
 # Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 7/18/2023
-nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues.geojson") %>%
+nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v2.geojson") %>%
   st_transform(crs = 4326) %>%
   group_by(name) %>%
   slice(1) %>%
@@ -131,6 +131,24 @@ nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venu
   mutate(X = row_number()) %>%
   as.data.frame()
 
+
+```
+
+Clean the data to add IMV and Music Space indicators
+
+```{r}
+ nash_venue_data <- nash_venue_data %>% 
+  mutate(music_space = ifelse(purpose %in% c("3. Somewhat likely", 
+                                             "4. Very Likely") &
+                                events_per_month %in% c("2. 5-10 Events per month",
+                                                        "3. 11-20 Events per month",
+                                                        "3. 11-20 Events per month"),
+                              "Music Space", "Occasional Music Space")) %>%
+  mutate(IMV = case_when(ownership_structure == "1. Yes" & independent_booking == "3. Never" ~
+                           "Indep. Owned and Operated",
+                         ownership_structure == "1. Yes" & independent_booking == "2. Sometimes" ~
+                           "Quasi-independent"))%>%
+  mutate(IMV = ifelse(is.na(IMV) == TRUE, "Non-Independent", IMV))
 
 ```
 
@@ -151,7 +169,11 @@ base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggr
 
 # 1. Key Takeaways
 
-
+- IMVs are in spaces valued at far less per sqft than non-IMVs
+- IMVs are doing more experimental programming
+- IMVs do not seem to be more community-focused on average
+- About 2/3rds of music spaces in Nashville are "Occasional" music spaces - with programming focused on other types of business and/or infrequent events
+- Spaces with lower land values are investing more in community-oriented and experimental programming (IMV or not)
 
 # 2. Data Sources
 
@@ -202,11 +224,55 @@ nrow(nash_venue_data)
 ### 4.1.2. Number of IMVs
 
 
+What is a dedicated music venue?  What is an independent music venue?
+
+A music space - 
+More than 1 show per week (5+ per month), is live music the purpose rated "somewhat likely" or "very likely"
+
+```{r}
+nash_venue_data %>%
+  group_by(music_space) %>%
+  tally()
+
+```
+
+```{r}
+nash_venue_data %>%
+  group_by(music_space, IMV) %>%
+  tally()
+
+```
+
 ## 4.2. Venue locations
 
-- Where are they located? - Point map, Symbologized by planning area. 
+Music spaces
 
-NOTE - we should symbologize IMV status in these
+```{r}
+ggplot()+
+    geom_sf(data = d1_aggregates_nash,
+          fill = '#f0f0f0', 
+          color = 'white')+
+  geom_point(data = nash_venue_data,
+             aes(x = x, y = y, color = music_space),
+             alpha = 0.3, size = 1)+
+  mapTheme
+
+```
+
+Music spaces by indepenence
+
+```{r}
+ggplot()+
+    geom_sf(data = d1_aggregates_nash,
+          fill = '#f0f0f0', 
+          color = 'white')+
+  geom_point(data = nash_venue_data %>%
+               filter(music_space == "Music Space"),
+             aes(x = x, y = y, color = IMV),
+             alpha = 0.3, size = 1)+
+  mapTheme
+
+```
 
 ### 4.2.1. Interactive Map 
 
@@ -231,7 +297,7 @@ l
 ```
 ### 4.2.2. Heat map (ggplot)
 
-NOTE - needs a spatial data layer for the county behind it.
+This is JUST  FOR MUSIC SPACES, does not include occasional music spaces
 
 ```{r make_fishnet}
 fishnet <- st_make_grid(d1_aggregates_nash %>%
@@ -253,6 +319,7 @@ fishnet <- st_join(fishnet,
                 nash_venue_data %>%
                   filter(is.na(x)== FALSE,
                          is.na(y)== FALSE) %>%
+                  filter(music_space == "Music Space") %>%
                   st_as_sf(coords = c("x", "y"), crs = 4326), 
                 join = st_intersects, 
                 left = TRUE) %>%
@@ -332,6 +399,7 @@ ggplot(data = nash_venue_data %>%
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
+  facet_wrap(~music_space)+
   plotTheme
 ```
 
@@ -348,15 +416,12 @@ ggplot(data = nash_venue_data %>%
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
+  facet_wrap(~music_space)+
   plotTheme
 ```
 
 ```{r}
-ggplot(data = nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(data = nash_venue_data)+
   geom_bar(aes(IMV), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -365,23 +430,8 @@ ggplot(data = nash_venue_data %>%
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
-  plotTheme
-```
-
-```{r}
-ggplot(data = nash_venue_data %>%
-         mutate(ownership_structure = ifelse(ownership_structure == "1. Yes",
-                                             "Independently Owned & Operated", 
-                                             "Non-Indie Owned or No Data")))+
-  geom_bar(aes(independent_booking), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
-  labs(
-    title = "IMV Status",
-    subtitle = "Are booking or promotion contracted to corporate partners?",
-    x="Facetted by Ownership Structure",
-    y="Total Venues",
-    caption = "Data: PennPraxis")+
-  facet_wrap(~ownership_structure)+
+  facet_wrap(~music_space)+
+  coord_flip()+
   plotTheme
 ```
 
@@ -411,11 +461,7 @@ ggplot(data = nash_venue_data %>%
 ```{r}
 ggplot(data = nash_venue_data %>%
          mutate(capacity = as.numeric(capacity)) %>%
-         filter(capacity < 5000) %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+         filter(capacity < 5000) )+
   geom_histogram(aes(capacity), fill = CityPalette[6], alpha = 0.6, binwidth = 250)+
   #scale_fill_viridis_d()+
   labs(
@@ -429,13 +475,11 @@ ggplot(data = nash_venue_data %>%
   plotTheme
 ```
 
+There is still a ton of missing capacity data as of 8/16 - MF
+
 ```{r}
 nash_venue_data %>%
          mutate(capacity = as.numeric(capacity)) %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")) %>%
   group_by(IMV) %>%
   summarize(total_capacity = sum(capacity, na.rm = TRUE),
             median_capacity = median(capacity, na.rm = TRUE)) %>%
@@ -452,11 +496,7 @@ nash_venue_data %>%
 
 ```{r}
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(nash_venue_data )+
   geom_bar(aes(years_operating), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -467,11 +507,7 @@ ggplot(nash_venue_data %>%
     caption = "Data: PennPraxis")+
   plotTheme
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(nash_venue_data )+
   geom_bar(aes(years_operating), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -480,7 +516,7 @@ ggplot(nash_venue_data %>%
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
-  facet_wrap(~IMV)+
+  facet_grid(music_space~IMV)+
   plotTheme
 
 ```
@@ -524,40 +560,7 @@ ggplot(nash_venue_data %>%
 
 ## 4.7. Artist Payment
 
-```{r}
-
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
-  geom_bar(aes(funding_source), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
-  labs(
-    title = "Means of Payment",
-    subtitle = "",
-    x="",
-    y="Total Venues",
-    caption = "Data: PennPraxis")+
-  plotTheme
-
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
-  geom_bar(aes(funding_source), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
-  labs(
-    title = "Means of Payment",
-    subtitle = "",
-    x="",
-    y="Total Venues",
-    caption = "Data: PennPraxis")+
-  facet_wrap(~IMV)+
-  plotTheme
-
-```
+This data isn't any good - scrapping this
 
 ## 4.6. Programming
 
@@ -567,11 +570,7 @@ ggplot(nash_venue_data %>%
 
 ```{r}
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(nash_venue_data )+
   geom_bar(aes(experimentation), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -581,12 +580,11 @@ ggplot(nash_venue_data %>%
     y="Total Venues",
     caption = "Data: PennPraxis")+
   plotTheme
+```
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+
+```{r}
+ggplot(nash_venue_data )+
   geom_bar(aes(experimentation), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -597,6 +595,17 @@ ggplot(nash_venue_data %>%
     caption = "Data: PennPraxis")+
   facet_wrap(~IMV)+
   plotTheme
+
+```
+
+```{r}
+nash_venue_data %>%
+  group_by(IMV, music_space) %>%
+  summarize(mean_experimentation = mean(experimentation_ord, na.rm = TRUE),
+            n = n()) %>%
+  arrange(music_space) %>%
+  kable()
+
 
 ```
 
@@ -642,11 +651,7 @@ ggplot(nash_venue_data %>%
 
 ```{r}
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(nash_venue_data )+
   geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -655,13 +660,13 @@ ggplot(nash_venue_data %>%
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
+  facet_wrap(~music_space)+
   plotTheme
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+```
+
+```{r}
+ggplot(nash_venue_data)+
   geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -672,6 +677,18 @@ ggplot(nash_venue_data %>%
     caption = "Data: PennPraxis")+
   facet_wrap(~IMV)+
   plotTheme
+
+```
+
+
+```{r}
+nash_venue_data %>%
+  group_by(IMV, music_space) %>%
+  summarize(mean_interdisciplinarity = mean(interdisciplinarity_ord, na.rm = TRUE),
+            n = n()) %>%
+  arrange(music_space) %>%
+  kable()
+
 
 ```
 
@@ -680,11 +697,7 @@ ggplot(nash_venue_data %>%
 
 ```{r}
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(nash_venue_data)+
   geom_bar(aes(community_focus), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -695,11 +708,11 @@ ggplot(nash_venue_data %>%
     caption = "Data: PennPraxis")+
   plotTheme
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+```
+
+
+```{r}
+ggplot(nash_venue_data)+
   geom_bar(aes(community_focus), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -712,6 +725,20 @@ ggplot(nash_venue_data %>%
   plotTheme
 
 ```
+
+This is very interesting - what are the non-indie venues that are more local drive?
+
+```{r}
+nash_venue_data %>%
+  group_by(IMV, music_space) %>%
+  summarize(mean_community_focus = mean(community_focus_ord, na.rm = TRUE),
+            n = n()) %>%
+  arrange(music_space) %>%
+  kable()
+
+
+```
+
 
 ### 4.6.5. Promoting Events
 
@@ -758,11 +785,65 @@ ggplot(nash_venue_data %>%
 
 # 5. Venues and The City
 
-- Venue zoning districts (bar plot)
+- Venue zoning districts (bar plot) - WE STILL NEED THE ZONING
 
-- Venue square foot sales values and gross sales values (histogram, inflation adjusted)
+- Music spaces -  total appraised per sqft (histogram, table with summary stats)
 
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  ggplot()+
+  geom_histogram(aes(value_sqft), binwidth = 50) +
+  facet_wrap(~IMV)+
+  plotTheme
 
+```
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  group_by(IMV) %>%
+  summarize(median_sqft = median(value_sqft))
+
+```
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  group_by(experimentation) %>%
+  summarize(median_value_sqft = median(value_sqft, na.rm = TRUE)) %>%
+  ggplot()+
+  geom_bar(aes(x = experimentation, y = median_value_sqft), stat = "identity")+
+  plotTheme
+
+```
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  group_by(community_focus) %>%
+  summarize(median_value_sqft = median(value_sqft, na.rm = TRUE)) %>%
+  ggplot()+
+  geom_bar(aes(x = community_focus, y = median_value_sqft), stat = "identity")+
+  plotTheme
+
+```
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  group_by(interdisciplinarity) %>%
+  summarize(median_value_sqft = median(value_sqft, na.rm = TRUE)) %>%
+  ggplot()+
+  geom_bar(aes(x = interdisciplinarity, y = median_value_sqft), stat = "identity")+
+  plotTheme
+
+```
 
 - Venues by planning area / neighborhood
 
@@ -811,6 +892,8 @@ ggplot()+
 - k=5 mean square footage costs of recent sales (inflation adjusted) for indies
 
 - Relationship between programming scores and real estate value
+
+Box and whisker plot for 1-4 with sq footage on the Y
 
 - Comparison to CFP cities - programming and real estate relationships
 
@@ -976,7 +1059,7 @@ fishnet_parcels <- st_join(fishnet_parcels,
                 left = TRUE) %>%
   select(uniqueID, TotlAppr, starea) %>%
   group_by(uniqueID) %>% 
-  summarise(medianAssessment = median(TotlAppr/starea, na.rm = TRUE)) %>%
+  summarise(medianAssessment = median(TotlAppr/Area_sqft, na.rm = TRUE)) %>%
   #mutate(n = ifelse(n == 1, 0, n)) %>%
   #rename(n_venues = n) %>%
   as.data.frame() %>%
