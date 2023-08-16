@@ -110,8 +110,10 @@ source("~/GitHub/CFP/unified__city_data/epsg_list.R")
 # LOAD IN THE NASH DATA
 
 # Read in district aggregates
-d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/metro/Subareas/Subareas/Subareas.shp") %>%
-  st_as_sf(crs = 4326)
+d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate.geojson") %>%
+  st_as_sf(crs = 4326) %>%
+  rename(venue_count = num_venues,
+         d1_name = Communit_1)
 
 d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregates/d2_aggregates_06_15_23.geojson") %>%
   st_as_sf(crs = 4326) %>%
@@ -119,7 +121,15 @@ d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregat
 
 
 # Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 7/18/2023
-nash_venue_data <- read.csv("~/GitHub/Nashville_IMV/data/venue_tables/venue_table_detailed_7_3.csv")
+nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues.geojson") %>%
+  st_transform(crs = 4326) %>%
+  group_by(name) %>%
+  slice(1) %>%
+  ungroup() %>%
+  mutate(x=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+         y=map_dbl(geometry, ~st_centroid(.x)[[2]])) %>%
+  mutate(X = row_number()) %>%
+  as.data.frame()
 
 
 ```
@@ -214,7 +224,7 @@ l <- leaflet() %>%
                    radius =~ 1, 
                    fillOpacity =~ 1,
                    color =~ "blue",
-                   label=~paste(name, address))
+                   label=~paste(name, address_admin.x))
 
 l
 
@@ -280,6 +290,7 @@ ggplot()+
     caption = "Data: PennPraxis, Metro Nashville")+
   mapTheme
 ```
+
 ```{r fishnet_w_basemap}
 ggmap(base_map1) +
  geom_sf(data = ll(fishnet %>%
@@ -751,9 +762,51 @@ ggplot(nash_venue_data %>%
 
 - Venue square foot sales values and gross sales values (histogram, inflation adjusted)
 
+
+
 - Venues by planning area / neighborhood
 
-- Surface map of real estate values by square foot with indie venues on top
+All music spaces
+
+```{r venues_total_map}
+ggplot()+
+  geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
+          color = 'grey')+
+  geom_sf(data = d1_aggregates_nash %>%
+            filter(is.na(venue_count) == FALSE),
+          aes(fill = venue_count),
+          color = 'grey', alpha = 0.6)+
+  scale_fill_viridis('Venue Count', direction = -1, alpha = 0.8)+
+  geom_text(data = d1_aggregates_nash %>%
+              filter(venue_count != 0) %>%
+              mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+                     lat=map_dbl(geometry, ~st_centroid(.x)[[2]])),
+            aes(x = lon, y = lat, label = d1_name),
+            color = "black", size = 3)+
+  mapTheme
+
+```
+
+```{r venues_full_indie_map}
+ggplot()+
+  geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
+          color = 'grey')+
+  geom_sf(data = d1_aggregates_nash %>%
+            filter(is.na(venue_count) == FALSE),
+          aes(fill = venue_count),
+          color = 'grey', alpha = 0.6)+
+  scale_fill_viridis('Venue Count', direction = -1, alpha = 0.8)+
+  geom_text(data = d1_aggregates_nash %>%
+              filter(venue_count != 0) %>%
+              mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+                     lat=map_dbl(geometry, ~st_centroid(.x)[[2]])),
+            aes(x = lon, y = lat, label = d1_name),
+            color = "black", size = 3)+
+  mapTheme
+
+```
+
+- Surface map of real estate values by square foot with indie venues on top (this is found later)
 
 - k=5 mean square footage costs of recent sales (inflation adjusted) for indies
 
@@ -764,6 +817,98 @@ ggplot(nash_venue_data %>%
 - Programming, cost and relationship to distance to CBD
 
 - Venue age by district - where are the young and old venues?
+
+- CFP indicators maps
+
+```{r experimentation}
+ggplot()+
+  geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
+          color = 'grey')+
+  geom_sf(data = d1_aggregates_nash %>%
+            filter(is.na(experimentation) == FALSE),
+          aes(fill = experimentation),
+          color = 'grey', alpha = 0.6)+
+  scale_fill_viridis('Mean Experimental\nContent Score', direction = -1)+
+  geom_text(data = d1_aggregates_nash %>%
+              filter(venue_count != 0) %>%
+              mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+                     lat=map_dbl(geometry, ~st_centroid(.x)[[2]])),
+            aes(x = lon, y = lat, label = d1_name),
+            color = "black", size = 3)+
+  mapTheme
+
+```
+
+```{r community_map}
+ggplot()+
+  geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
+          color = 'grey')+
+  geom_sf(data = d1_aggregates_nash %>%
+            filter(is.na(community_focus) == FALSE),
+          aes(fill = community_focus),
+          color = 'grey', alpha = 0.6)+
+  scale_fill_viridis('Mean Community\nFocus Score', direction = -1)+
+  geom_text(data = d1_aggregates_nash %>%
+              filter(venue_count != 0) %>%
+              mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+                     lat=map_dbl(geometry, ~st_centroid(.x)[[2]])),
+            aes(x = lon, y = lat, label = d1_name),
+            color = "black", size = 3)+
+  mapTheme
+
+```
+
+```{r experimental_plot}
+
+ggplot(data = d1_aggregates_nash %>%
+         filter(is.na(experimentation) == FALSE) %>%
+         as.data.frame() %>%
+         mutate(venue_text = str_c(as.character(venue_count), " venues")) %>%
+         select(venue_text, venue_count, experimentation, d1_name) %>%
+         arrange(-experimentation) %>%
+         top_n(10))+
+  geom_bar(aes(x = reorder(toupper(d1_name), experimentation), 
+               y= experimentation),
+           stat = "identity", fill = CityPalette[6], width = 0.3,
+           alpha = 0.8)+
+  geom_text(aes(label = toupper(venue_text), x = toupper(d1_name), 
+                y= experimentation / 2), alpha = 0.6, size = 4 )+
+  labs(
+    title = "DISTRICTS WITH HIGHEST EXPERIMENTAL CONTENT SCORES",
+    #subtitle = "Labels indicate total number of districts in that ward",
+    caption = "Data: PennPraxis")+
+  ylab("MEAN EXPERIMENTAL CONTENT SCORE (SCALE OF 1-4)")+
+  xlab("")+
+  coord_flip()+
+  plotTheme
+
+```
+
+```{r experimental_plot}
+
+ggplot(data = d1_aggregates_nash %>%
+         filter(is.na(community_focus) == FALSE) %>%
+         as.data.frame() %>%
+         mutate(venue_text = str_c(as.character(venue_count), " venues")) %>%
+         select(venue_text, venue_count, community_focus, d1_name) %>%
+         arrange(-community_focus) %>%
+         top_n(10))+
+  geom_bar(aes(x = reorder(toupper(d1_name), community_focus), 
+               y= community_focus),
+           stat = "identity", fill = CityPalette[6], width = 0.3,
+           alpha = 0.8)+
+  geom_text(aes(label = toupper(venue_text), x = toupper(d1_name), 
+                y= community_focus / 2), alpha = 0.6, size = 4 )+
+  labs(
+    title = "DISTRICTS WITH HIGHEST COMMUNITY SCORES",
+    #subtitle = "Labels indicate total number of districts in that ward",
+    caption = "Data: PennPraxis")+
+  ylab("MEAN COMMUNITY PROGRAM SCORE (SCALE OF 1-4)")+
+  xlab("")+
+  coord_flip()+
+  plotTheme
+
+```
 
 # 6. Venues and Regulation
 

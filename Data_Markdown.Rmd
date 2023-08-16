@@ -34,7 +34,13 @@ Load venue datasets
 ```{r}
 ## load venue data (last updated: 08/09/2023)
 
-venues = read.csv("~/Github/Nashville_IMV/data/venue_tables/New_8_9/venue_8_9_populated.csv") %>% st_as_sf(coords = c("x","y"), remove = FALSE,crs= 4326, na.fail = FALSE)
+venues = read.csv("~/Github/Nashville_IMV/data/venue_tables/New_8_9/venue_8_9_populated.csv") %>% 
+  st_as_sf(coords = c("x","y"), 
+           remove = FALSE, 
+           crs= 4326, na.fail = FALSE) %>%
+  group_by(name, address_admin, APN) %>%
+  slice(1) %>%
+  ungroup()
 
 ## venue APN data (last updated: 04/16/2023) - use this dataset as a "key" for all tabular joins
 venue_admin_key_table = read.csv("~/GitHub/Nashville_IMV/data/venue_tables/simple_table_4_16.csv")
@@ -117,7 +123,8 @@ acs2010 <- get_acs(geography = "tract",
 ```{r}
 ## loading "parent" geography: city council districts (the match up to census block boundaries and )
 #council_districts = st_read("https://data.nashville.gov/resource/iw7r-m8qr.geojson") %>% select(council_district, geometry) %>% st_transform(crs=4326)
-planning_districts = st_read("~/Github/Nashville_IMV/data/metro/Subareas/Subareas.shp") %>% st_transform(crs=4326)
+planning_districts = st_read("~/Github/Nashville_IMV/data/metro/Subareas/Subareas/Subareas.shp") %>% 
+  st_transform(crs=4326)
 planning_districts$area = st_area(planning_districts)
 ```
 
@@ -150,41 +157,15 @@ plan_dist =
   mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1), perc_chg_med_rent = round(((avg_med_rent20-avg_med_rent10)/avg_med_rent10)*100,1), perc_chg_youth = round(((perc_youth_20-perc_youth_10)/perc_youth_10)*100,1))
 ```
 
-- aggregate w/mean: interdisciplinary through experimentation do mean (except purpose), capacity
-- aggregate w/sum: num_venues, independent_booking, ownership (together and separate), capacity
 
-
-```{r}
-## aggregating venue data by council district area and creating table of council districts with census acs and venue data
-
-venues = venues %>% mutate(
-  independent_booking_and_ownership = ifelse(independent_booking_ord==1&ownership_structure_ord==1,1,0)
-)
-
-plan_dist_venues = st_join(plan_dist, select(venues,capacity,ownership_structure_ord,independent_booking_ord,independent_booking_and_ownership,independent_booking_and_ownership,interdisciplinarity_ord,event_promotion_ord,community_focus_ord,creativity_ord,experimentation_ord)) %>% 
-#not sure why NAs are introduced  
-  group_by(Communit_1) %>% 
-  summarize(num_venues = n(),
-            avg_capacity = mean(as.numeric(capacity),na.rm=TRUE),
-            independent_ownership = sum(ownership_structure_ord,na.rm=TRUE),
-            independent_booking = sum(independent_booking_ord,na.rm=TRUE),
-            independent_booking_and_ownership = sum(independent_booking_and_ownership,na.rm=TRUE),
-            interdisciplinarity = mean(interdisciplinarity_ord,na.rm=TRUE),
-            event_promotion = mean(event_promotion_ord,na.rm=TRUE),
-            community_focus = mean(community_focus_ord,na.rm=TRUE),
-            creativity = mean(creativity_ord,na.rm=TRUE),
-            experimentation = mean(experimentation_ord,na.rm=TRUE),
-            ) %>% 
-  left_join(., st_drop_geometry(plan_dist), by="Communit_1") %>% mutate(density_venues = num_venues/area)
-
-```
 
 
 ```{r}
 ## creating table of venues with census acs data (aggregated by council districts) added on
 #venues_dist = st_join(venues,coun_dist)
 
-venues_dist = st_join(venues,plan_dist)
+venues_dist = st_join(venues, plan_dist %>%
+                        select(Communit_1))
 
 ```
 
@@ -212,17 +193,90 @@ addresses_to_pull = venue_all_FD_data %>% filter(is.na(Location.Full.Address)) %
 
 
 Parcels dataset cleaning
+
+MF - the issue here is that you are dropping leading zeros - fixed that with the str_pad
 ```{r}
 ## load administrative data (very time consuming)
 parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4326)
 
-venue_all_parcel_data = left_join(venue_admin_key_table,parcels,by= c("address_admin"="PropAddr","APN")) %>% unique()
+venue_all_parcel_data = left_join(venue_admin_key_table %>%
+                                    mutate(APN = str_pad(APN, width = 11, side = "left", pad = "0")), 
+                                  parcels,
+                                  by= c("address_admin"="PropAddr",
+                                        "APN" = "APN")) %>% 
+  unique()
 
-variables_parcels = c("name", "address_admin", "APN", "TotlAppr", "SalePrice", "Acres", "FinishArea", "LUDesc", "Owner", "geometry")
+variables_parcels = c("name", "address_admin", "APN", "TotlAppr", 
+                      "LandAppr", "ImprAppr", "OwnDate", "AssessDate",
+                      "TotlAssd", "LandAssd", "ImprAssd",
+                      "SalePrice", "Acres", "FinishArea", "LUDesc", 
+                      "Owner", "OwnAddr1", "OwnAddr2", "OwnCity",
+                      "OwnState", "OwnZip", "Council", "geometry")
 
-venue_select_parcel_data = venue_all_parcel_data %>% select(all_of(variables_parcels)) %>% mutate(Area_sqft = Acres*43560)
+venue_select_parcel_data = venue_all_parcel_data %>% 
+  select(all_of(variables_parcels)) %>% 
+  mutate(Area_sqft = Acres*43560)
+
+venue_full = left_join(venue_select_parcel_data, venues_dist %>%
+                         as.data.frame() %>% 
+                         mutate(APN = str_pad(APN, width = 11, side = "left", pad = "0")) %>%
+                         select(-geometry), by = c("address_admin", "APN", "name")) %>%
+  mutate(x=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+         y=map_dbl(geometry, ~st_centroid(.x)[[2]]))
 #area is of parcel not building so I will not calculate price/sqft just yet
 #will get centroids from venues table rather than re-calculating
+```
+
+## Aggregating to district
+
+- aggregate w/mean: interdisciplinary through experimentation do mean (except purpose), capacity
+- aggregate w/sum: num_venues, independent_booking, ownership (together and separate), capacity
+
+MF - we will make changes to the aggregation process if we see things in the venue data that we want to summarize
+For example we might want to do something here that summarizes things by frequent/infrequent venues etc.,
+We still have some issues here with NaN values in the census info. Not a big deal if we have NA values for areas with 1 venue
+
+```{r}
+## aggregating venue data by council district area and creating table of council districts with census acs and venue data
+
+d1_aggregates = st_join(plan_dist, venue_full %>%
+                                      as.data.frame() %>%
+                                      st_as_sf(coords = c("x", "y"), crs = 4326) %>%
+                                      mutate(independent_booking_and_ownership = 
+                                               ifelse(independent_booking_ord == 1 & 
+                                                        ownership_structure_ord == 1, 1,0),
+                                              quasi_independent = 
+                                               ifelse(independent_booking == "2. Sometimes" &
+                                                        ownership_structure_ord == 1, 1, 0)) %>%
+                                      select(capacity,
+                                             ownership_structure_ord,
+                                             independent_booking_ord,
+                                             independent_booking_and_ownership,
+                                             interdisciplinarity_ord,
+                                             quasi_independent,
+                                             event_promotion_ord,
+                                             community_focus_ord,
+                                             creativity_ord,
+                                             experimentation_ord)) %>% 
+#not sure why NAs are introduced  
+  group_by(Communit_1) %>% 
+  summarize(num_venues = n(),
+            avg_capacity = mean(as.numeric(capacity),na.rm=TRUE),
+            median_capacity = median(as.numeric(capacity), na.rm = TRUE),
+            total_capacity = sum(as.numeric(capacity), na.rm = TRUE),
+            independent_ownership = sum(ownership_structure_ord,na.rm=TRUE),
+            independent_booking = sum(independent_booking_ord,na.rm=TRUE),
+            independent_booking_and_ownership = sum(independent_booking_and_ownership,na.rm=TRUE),
+            quasi_independent = sum(quasi_independent, na.rm = TRUE),
+            interdisciplinarity = mean(interdisciplinarity_ord,na.rm=TRUE),
+            event_promotion = mean(event_promotion_ord,na.rm=TRUE),
+            community_focus = mean(community_focus_ord,na.rm=TRUE),
+            creativity = mean(creativity_ord,na.rm=TRUE),
+            experimentation = mean(experimentation_ord,na.rm=TRUE),
+            ) %>% 
+  left_join(., st_drop_geometry(plan_dist), by="Communit_1") %>% 
+  mutate(density_venues = num_venues/area)
+
 ```
 
 Business Licenses Dataset cleaning
@@ -236,3 +290,12 @@ variables_business = c("name","BUSNAME","address_admin","PropAddr","APN","BUSTYP
 venue_select_business_data = select(venue_all_business_data,all_of(variables_business))
 ```
 
+## Write out the data
+
+```{r}
+
+st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v2.geojson")
+
+st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v2.geojson")
+
+```
