@@ -845,6 +845,36 @@ nash_venue_data %>%
 
 ```
 
+Seems like IMVs and non-IMVs program similarly in practice vis-a-vis these measures... ON AVERAGE
+
+What about the exceptional examples??
+
+No - it's basically the same!
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
+           community_focus_ord + event_promotion_ord) %>%
+  ggplot()+
+  geom_histogram(aes(programming_sum), binwidth = 2)+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
+           community_focus_ord + event_promotion_ord) %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  ggplot()+
+  geom_point(aes(y = programming_sum, x = value_sqft, color = IMV))+
+  plotTheme
+
+```
+
 - Venues by planning area / neighborhood
 
 All music spaces
