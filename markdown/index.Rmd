@@ -142,11 +142,13 @@ Clean the data to add IMV and Music Space indicators
                                              "4. Very Likely") &
                                 events_per_month %in% c("2. 5-10 Events per month",
                                                         "3. 11-20 Events per month",
-                                                        "3. 11-20 Events per month"),
+                                                        "4. 20+ Events per month"),
                               "Music Space", "Occasional Music Space")) %>%
   mutate(IMV = case_when(ownership_structure == "1. Yes" & independent_booking == "3. Never" ~
                            "Indep. Owned and Operated",
                          ownership_structure == "1. Yes" & independent_booking == "2. Sometimes" ~
+                           "Quasi-independent",
+                         ownership_structure == "1. Yes" & independent_booking == "4. Information unavailable" ~
                            "Quasi-independent"))%>%
   mutate(IMV = ifelse(is.na(IMV) == TRUE, "Non-Independent", IMV))
 
@@ -171,8 +173,10 @@ base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggr
 
 - IMVs are in spaces valued at far less per sqft than non-IMVs
 - IMVs are doing more experimental programming
-- IMVs do not seem to be more community-focused on average
-- About 2/3rds of music spaces in Nashville are "Occasional" music spaces - with programming focused on other types of business and/or infrequent events
+- IMVs are more community-focused on average
+- IMVs are more likely to promote lineups and artists in their marketing
+- IMVS are less likely to use their space for non-music programs and uses
+- About X% of music spaces in Nashville are "Occasional" music spaces - with programming focused on other types of business and/or infrequent events
 - Spaces with lower land values are investing more in community-oriented and experimental programming (IMV or not)
 
 # 2. Data Sources
@@ -268,15 +272,16 @@ ggplot()+
           color = 'white')+
   geom_point(data = nash_venue_data %>%
                filter(music_space == "Music Space"),
-             aes(x = x, y = y, color = IMV),
+             aes(x = x, y = y),
              alpha = 0.3, size = 1)+
+  facet_wrap(~IMV)+
   mapTheme
 
 ```
 
 ### 4.2.1. Interactive Map 
 
-```{r leaflet, message= FALSE, warning=FALSE}
+```{r leaflet, message= FALSE, warning=FALSE, eval = FALSE}
 
 l <- leaflet() %>% 
   addProviderTiles(providers$Esri.WorldTopoMap) %>%
@@ -290,9 +295,19 @@ l <- leaflet() %>%
                    radius =~ 1, 
                    fillOpacity =~ 1,
                    color =~ "blue",
-                   label=~paste(name, address_admin.x))
+                   label=~paste(name, address_admin, IMV))
 
 l
+
+```
+
+```{r}
+nash_venue_data %>%
+  st_as_sf(coords = c("x","y"), 
+           crs= 4326) %>%
+  filter(music_space == "Music Space") %>%
+  select(name, address_admin, APN, IMV, ownership_structure, independent_booking, capacity, TotlAppr) %>%
+  mapView(., zcol = "IMV")
 
 ```
 ### 4.2.2. Heat map (ggplot)
@@ -507,6 +522,10 @@ ggplot(nash_venue_data )+
     caption = "Data: PennPraxis")+
   plotTheme
 
+```
+
+```{r}
+
 ggplot(nash_venue_data )+
   geom_bar(aes(years_operating), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
@@ -517,6 +536,22 @@ ggplot(nash_venue_data )+
     y="Total Venues",
     caption = "Data: PennPraxis")+
   facet_grid(music_space~IMV)+
+  plotTheme
+
+```
+
+```{r}
+
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
+  geom_bar(aes(years_operating, fill = IMV), position = "dodge", alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Years Operating",
+    subtitle = "",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
   plotTheme
 
 ```
@@ -613,11 +648,7 @@ nash_venue_data %>%
 
 ```{r}
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(nash_venue_data)+
   geom_bar(aes(purpose), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -628,11 +659,7 @@ ggplot(nash_venue_data %>%
     caption = "Data: PennPraxis")+
   plotTheme
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(nash_venue_data)+
   geom_bar(aes(purpose), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -726,7 +753,7 @@ ggplot(nash_venue_data)+
 
 ```
 
-This is very interesting - what are the non-indie venues that are more local drive?
+Indie venues ARE more local
 
 ```{r}
 nash_venue_data %>%
@@ -745,11 +772,7 @@ nash_venue_data %>%
 
 ```{r}
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(nash_venue_data)+
   geom_bar(aes(event_promotion), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -760,15 +783,15 @@ ggplot(nash_venue_data %>%
     caption = "Data: PennPraxis")+
   plotTheme
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+```
+
+
+```{r}
+ggplot(nash_venue_data)+
   geom_bar(aes(event_promotion), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Interdisciplinarity",
+    title = "Promoting Artistic Content",
     subtitle = "Q: Is the promotion and marketing of this space focused on artistic content (artists, lineups, performances)?",
     x="",
     y="Total Venues",
@@ -777,7 +800,16 @@ ggplot(nash_venue_data %>%
   plotTheme
 
 ```
+```{r}
+nash_venue_data %>%
+  group_by(IMV, music_space) %>%
+  summarize(mean_event_promotion = mean(event_promotion_ord, na.rm = TRUE),
+            n = n()) %>%
+  arrange(music_space) %>%
+  kable()
 
+
+```
 
 ## 4.7. CFP Comparisons
 
@@ -793,6 +825,7 @@ ggplot(nash_venue_data %>%
 nash_venue_data %>%
   filter(music_space == "Music Space") %>%
   mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  filter(value_sqft < 1000) %>%
   ggplot()+
   geom_histogram(aes(value_sqft), binwidth = 50) +
   facet_wrap(~IMV)+
@@ -857,7 +890,7 @@ nash_venue_data %>%
   mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   ggplot()+
-  geom_histogram(aes(programming_sum), binwidth = 2)+
+  geom_histogram(aes(programming_sum), binwidth = 4)+
   facet_wrap(~IMV)+
   plotTheme
 
@@ -869,8 +902,10 @@ nash_venue_data %>%
   mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  filter(value_sqft < 1000) %>%
   ggplot()+
   geom_point(aes(y = programming_sum, x = value_sqft, color = IMV))+
+  geom_smooth(aes(y = programming_sum, x = value_sqft), method = "loess", se = FALSE)+
   plotTheme
 
 ```
@@ -920,10 +955,6 @@ ggplot()+
 - Surface map of real estate values by square foot with indie venues on top (this is found later)
 
 - k=5 mean square footage costs of recent sales (inflation adjusted) for indies
-
-- Relationship between programming scores and real estate value
-
-Box and whisker plot for 1-4 with sq footage on the Y
 
 - Comparison to CFP cities - programming and real estate relationships
 
