@@ -34,7 +34,7 @@ Load venue datasets
 ```{r}
 ## load venue data (last updated: 08/09/2023)
 
-venues = read.csv("~/Github/Nashville_IMV/data/venue_tables/New_8_9/venue_8_9_populated.csv") %>% 
+venues = read.csv("~/Github/Nashville_IMV/data/venue_tables/new_8_24/venue_table_8_24_populated.csv") %>% 
   st_as_sf(coords = c("x","y"), 
            remove = FALSE, 
            crs= 4326, na.fail = FALSE) %>%
@@ -176,9 +176,11 @@ venues_dist = st_join(venues, plan_dist %>%
 - Then use the code below to inspect and visualize this information.
 
 Fire department dataset cleaning
-```{r}
+
+MF - LET'S NOT RUN THIS UNTIL WE HAVE THE DATA WE NEED
+```{r eval = FALSE}
 ## load fire department data
-FD = st_read("~/Github/Nashville_IMV/data/metro/Bars-&-Nightclubs-with-Occupant-Loads_2023-03-24_131105.csv")
+FD = read.csv("~/Github/Nashville_IMV/data/metro/Bars-&-Nightclubs-with-Occupant-Loads_2023-03-24_131105.csv")
 
 #94 venues match, 198 venues of ours not represented inn FD, 162 FD not represented in venues
 venue_all_FD_data = left_join(venue_admin_key_table,FD,by= c("address_admin"="Location.Name","APN"="Location.Property.Tax.ID")) %>% unique()
@@ -199,7 +201,9 @@ MF - the issue here is that you are dropping leading zeros - fixed that with the
 ## load administrative data (very time consuming)
 parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4326)
 
-venue_all_parcel_data = left_join(venue_admin_key_table %>%
+venue_all_parcel_data = left_join(venues_dist %>%
+                                    as.data.frame() %>%
+                                    select(-geometry) %>%
                                     mutate(APN = str_pad(APN, width = 11, side = "left", pad = "0")), 
                                   parcels,
                                   by= c("address_admin"="PropAddr",
@@ -226,6 +230,15 @@ venue_full = left_join(venue_select_parcel_data, venues_dist %>%
 #area is of parcel not building so I will not calculate price/sqft just yet
 #will get centroids from venues table rather than re-calculating
 ```
+## Zoning data
+
+MF - I STOPPED HERE 8/24 - NEXT STEP IS TO ADD ZONING DATA AND TABULAR JOIN, AND THEN DO SOME WORK ON THE AGGREGATES. I WILL CREATE THE IMV INDICATORS HERE AND THEN ALSO TABULATE THEM IN THE AGGREGATES
+
+```{r}
+
+
+```
+
 
 ## Aggregating to district
 
