@@ -110,7 +110,7 @@ source("~/GitHub/CFP/unified__city_data/epsg_list.R")
 # LOAD IN THE NASH DATA
 
 # Read in district aggregates
-d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v2.geojson") %>%
+d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v4.geojson") %>%
   st_as_sf(crs = 4326) %>%
   rename(venue_count = num_venues,
          d1_name = Communit_1)
@@ -121,7 +121,7 @@ d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregat
 
 
 # Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 7/18/2023
-nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v2.geojson") %>%
+nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v3.geojson") %>%
   st_transform(crs = 4326) %>%
   group_by(name) %>%
   slice(1) %>%
@@ -131,26 +131,6 @@ nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venu
   mutate(X = row_number()) %>%
   as.data.frame()
 
-
-```
-
-Clean the data to add IMV and Music Space indicators
-
-```{r}
- nash_venue_data <- nash_venue_data %>% 
-  mutate(music_space = ifelse(purpose %in% c("3. Somewhat likely", 
-                                             "4. Very Likely") &
-                                events_per_month %in% c("2. 5-10 Events per month",
-                                                        "3. 11-20 Events per month",
-                                                        "4. 20+ Events per month"),
-                              "Music Space", "Occasional Music Space")) %>%
-  mutate(IMV = case_when(ownership_structure == "1. Yes" & independent_booking == "3. Never" ~
-                           "Indep. Owned and Operated",
-                         ownership_structure == "1. Yes" & independent_booking == "2. Sometimes" ~
-                           "Quasi-independent",
-                         ownership_structure == "1. Yes" & independent_booking == "4. Information unavailable" ~
-                           "Quasi-independent"))%>%
-  mutate(IMV = ifelse(is.na(IMV) == TRUE, "Non-Independent", IMV))
 
 ```
 
@@ -817,9 +797,13 @@ nash_venue_data %>%
 
 # 5. Venues and The City
 
-- Venue zoning districts (bar plot) - WE STILL NEED THE ZONING
+- Venue zoning districts (bar plot)
 
-- Music spaces -  total appraised per sqft (histogram, table with summary stats)
+- Median sqft cost by neighborhood
+
+- IMVs with the highest sq ft cost
+
+## 5.1. Venues and real estate costs
 
 ```{r}
 nash_venue_data %>%
@@ -890,11 +874,26 @@ nash_venue_data %>%
   mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   ggplot()+
-  geom_histogram(aes(programming_sum), binwidth = 4)+
+  geom_histogram(aes(programming_sum), binwidth = 1)+
   facet_wrap(~IMV)+
   plotTheme
 
 ```
+
+## 5.2. Zoning
+
+
+```{r}
+nash_venue_data %>%
+  group_by(ZONE_DESC) %>%
+  tally() %>%
+  arrange(-n)
+
+```
+
+## 5.3. Square footage costs
+
+MF - what are these indies with the super high sq footage values?
 
 ```{r}
 nash_venue_data %>%
@@ -910,7 +909,7 @@ nash_venue_data %>%
 
 ```
 
-- Venues by planning area / neighborhood
+## 5.4.  Venues by planning area / neighborhood
 
 All music spaces
 
@@ -919,10 +918,10 @@ ggplot()+
   geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
           color = 'grey')+
   geom_sf(data = d1_aggregates_nash %>%
-            filter(is.na(venue_count) == FALSE),
-          aes(fill = venue_count),
+            filter(is.na(num_music_smaces) == FALSE),
+          aes(fill = num_music_smaces),
           color = 'grey', alpha = 0.6)+
-  scale_fill_viridis('Venue Count', direction = -1, alpha = 0.8)+
+  scale_fill_viridis('Music Spaces', direction = -1, alpha = 0.8)+
   geom_text(data = d1_aggregates_nash %>%
               filter(venue_count != 0) %>%
               mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
@@ -938,10 +937,29 @@ ggplot()+
   geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
           color = 'grey')+
   geom_sf(data = d1_aggregates_nash %>%
-            filter(is.na(venue_count) == FALSE),
-          aes(fill = venue_count),
+            filter(is.na(IMV_n) == FALSE),
+          aes(fill = IMV_n),
           color = 'grey', alpha = 0.6)+
-  scale_fill_viridis('Venue Count', direction = -1, alpha = 0.8)+
+  scale_fill_viridis('IMVs', direction = -1, alpha = 0.8)+
+  geom_text(data = d1_aggregates_nash %>%
+              filter(venue_count != 0) %>%
+              mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+                     lat=map_dbl(geometry, ~st_centroid(.x)[[2]])),
+            aes(x = lon, y = lat, label = d1_name),
+            color = "black", size = 3)+
+  mapTheme
+
+```
+
+```{r venues_quasi_indie_map}
+ggplot()+
+  geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
+          color = 'grey')+
+  geom_sf(data = d1_aggregates_nash %>%
+            filter(is.na(Quasi_IMV_n) == FALSE),
+          aes(fill = Quasi_IMV_n),
+          color = 'grey', alpha = 0.6)+
+  scale_fill_viridis('Quasi IMVs', direction = -1, alpha = 0.8)+
   geom_text(data = d1_aggregates_nash %>%
               filter(venue_count != 0) %>%
               mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),

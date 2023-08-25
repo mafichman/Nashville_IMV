@@ -310,7 +310,7 @@ d1_aggregates = st_join(plan_dist, venue_full %>%
             median_capacity = median(as.numeric(capacity), na.rm = TRUE),
             total_capacity = sum(as.numeric(capacity), na.rm = TRUE),
             IMV_n = sum(IMV_ord,na.rm=TRUE),
-            Quasi_IMV_n = sum(IMV_ord,na.rm=TRUE),
+            Quasi_IMV_n = sum(Quasi_IMV_ord,na.rm=TRUE),
             Non_IMV_n = sum(Non_IMV_ord,na.rm=TRUE),
             interdisciplinarity = mean(interdisciplinarity_ord,na.rm=TRUE),
             event_promotion = mean(event_promotion_ord,na.rm=TRUE),
@@ -336,7 +336,7 @@ venue_select_business_data = select(venue_all_business_data,all_of(variables_bus
 
 ```{r}
 
-st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v3.geojson")
+st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v4.geojson")
 
 st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v3.geojson")
 
