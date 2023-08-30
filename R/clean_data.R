@@ -13,8 +13,8 @@ library(dplyr)
 #renames_short = c("name"="Venue_name", "url"="Website_URL", "address"="Address_Full", "address_admin"="Address_Number", "street"="Street_Name", "zip"="Postcode", "county"="County", "city"="Municipality", "y"="Coordinates_lat", "x"="Coordinates_lon")
 renames_long = c("name"="V1", "liaison"="V2", "ownership_structure"="V3", "capacity"="V4", "independent_booking"="V5", "events_per_month"="V6", "years_operating"="V7", "funding_source"="V8", "interdisciplinarity"="V9", "event_promotion"="V10", "purpose"="V11", "community_focus"="V12", "creativity"="V13", "experimentation"="V14", "threats_neighbors"="V15", "threats_cost"="V16", "threats_licensing"="V17", "description"="V18", "contact_name"="V19", "contact_email"="V20", "contact_telephone"="V21", "url"="V22", "address"="V23", "address_admin"="V24", "street"="V25", "zip"="V26", "county"="V27", "city"="V28", "APN"="V29", "y"="V30", "x"="V31", "genre"="V32", "venueType_club"="V33", "venueType_disco"="V34", "venueType_openAir"="V35", "venueType_concertHall"="V36", "venueType_theater"="V37", "venueType_cinema"="V38", "venueType_musicBar"="V39", "venueType_gallery"="V40", "venueType_restaurant"="V41", "venueType_warehouse"="V42", "venueType_arena"="V43", "venueType_shop"="V44", "venueType_studio"="V45")
 #renames_long2 = c("Venue name"="name", "Liaison responsible to fill out sheet?"="liaison", "Ownership Structure: 1. Yes 2. No 3. Information unavailable"="ownership_structure", "Capacity (Numeric Input)"="capacity", "Independent Booking: 1. Always 2. Sometimes 3. Never 4. Information unavailable"="independent_booking", "Events per Month: 1. 1-4 2. 5-10 3. 11-20 4. 20+"="events_per_month", "Years of Operation: 1. 0-3 2. 3-10 3. 11-20 4. 20+"="years_operating", "Artist payment based mostly on: 1. Ticket sales 2. Bar/food sales (e.g. flat fee) 3. Tips 4. Mixed/all of the above"="funding_source", "Interdisciplinarity: 1.Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="interdisciplinarity", "Promoting events: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="event_promotion", "Main purpose: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="purpose", "Community Focus: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="community_focus", "Creative Output: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="creativity", "Experimentation: 1. Not At All Likely 2. Not too likely 3. Somewhat likely 4. Very Likely"="experimentation", "Threats: Neighbors-related"="threats_neighbors", "Threats: Costs / rents-related"="threats_cost", "Threats: Licensing-related"="threats_licensing", "Venue short description"="description", "Contact person"="contact_name", "Email address"="contact_email", "Telephone number"="contact_telephone", "Website URL"="url", "Address Full"="address", "Address Number"="address_admin", "Street Name"="street", "Postcode"="zip", "County"="county", "Municipality"="city", "APN"="APN", "Coordinates (latitude)"="y", "Coordinates (longitude)"="x", "Genre: "="genre", "Club"="venueType_club", "Disco (mainstream)"="venueType_disco", "Outdoor stage (open air)"="venueType_openAir", "Concert hall / livehouse"="venueType_concertHall", "Theatre"="venueType_theater", "Cinema"="venueType_cinema", "Music Bar"="venueType_musicBar", "Gallery / museum space"="venueType_gallery", "Restaurant / cafe"="venueType_restaurant", "Rental venue / warehouse"="venueType_warehouse", "Arena / stadium"="venueType_arena", "Retail store / Shop"="venueType_shop", "Production studio / Co-working space"="venueType_studio")
-pop_venue_db = read.csv("~/Github/Nashville_IMV/data/venue_tables/venues_[date].csv", header=F) %>% rename(renames_long)
-pop_venue_db = pop_venue_db[-c(1:4),]
+pop_venue_db = read.csv("~/Github/Nashville_IMV/data/venue_tables/new_8_24/venues_8_24.csv", header=F) %>% rename(renames_long)
+pop_venue_db = pop_venue_db[-c(1:5),]
 
 ## load administrative data (very time consuming so only loading tax parcels rather than Licenses and Inspections data)
 parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp") %>% st_transform(4269) 
@@ -23,7 +23,7 @@ parcels = st_read("~/Github/Nashville_IMV/data/metro/Nashville_Parcel_data.shp")
 work_table  = select(pop_venue_db,name,address,address_admin) 
 
 ## select only the two address column to match and APN column from tax parcel data to have a simpler table to work with
-work_join_table = select(parcels, PropAddr,APN)
+work_join_table = parcels  %>% select(PropAddr,APN)
 
 ## create empty "APN_Address" column to populate with venue address formated like tax parcel data addresses
 work_table = work_table %>% mutate(APN_Address = address_admin)
@@ -44,7 +44,13 @@ work_table$APN_Address = str_replace_all(work_table$APN_Address, "[\r\n]", "")
 work_table$APN_Address = toupper(work_table$APN_Address)
 
 ## swap nomenclature (and a few specific outliers)
-swaps = c("DRIVE"="DR", "STREET"="ST", "AVENUE"="AVE", "PKwork_table$APN_Address = str_replace_all(work_table$APN_Address, swaps)"="PIKE", "CIRCLE"="CIR", "NORTH"="N", " SOUTH"=" S", "BOULEVARD"="BLVD", "PARKWAY"="PKWY", " ALLEY"=" ALY", "PLACE"="PL", "SQUARE"="SQ", " ROAD" = " RD", "BICENTENNIAL CAPITOL MALL STATE PARK- 600 JAMES ROBERTSON PIKEWY"="600 JAMES ROBERTSON PKWY", "ONE "="1 ", "FOURTH"="4TH")
+swaps = c("DRIVE"="DR", "STREET"="ST", "AVENUE"="AVE", 
+          "PKwork_table$APN_Address = str_replace_all(work_table$APN_Address, swaps)"="PIKE", 
+          "CIRCLE"="CIR", "NORTH"="N", " SOUTH"=" S", 
+          "BOULEVARD"="BLVD", "PARKWAY"="PKWY", " ALLEY"=" ALY", 
+          "PLACE"="PL", "SQUARE"="SQ", " ROAD" = " RD", 
+          "BICENTENNIAL CAPITOL MALL STATE PARK- 600 JAMES ROBERTSON PIKEWY"="600 JAMES ROBERTSON PKWY", "ONE "="1 ", 
+          "FOURTH"="4TH")
 
 ## clip off more unnecessary trailing information
 work_table = work_table %>% separate(APN_Address,into = ("APN_Address"),sep=" SUITE")
@@ -76,10 +82,15 @@ full_table = left_join(work_table, work_join_table, by = c("APN_Address"="PropAd
 manual_match_table = read.csv("~/Github/Nashville_IMV/data/venue_tables/manual_APNs_[date].csv", header=TRUE)
 
 ## join by address to tax parcel data - 274 out of 283 matched
-APN_join2 = inner_join(manual_match_table, work_join_table, by = c("APN_Address_Manual"="PropAddr")) %>% unique() %>% select(-APN.x) %>% rename(APN = APN.y)
+APN_join2 = inner_join(manual_match_table, work_join_table, by = c("APN_Address_Manual"="PropAddr")) %>% unique()
 
 ## view which addresses weren't joined and why - should only be venues not in study area or with insufficient data
 APN_nomatch = left_join(manual_match_table, work_join_table, by = c("APN_Address"="PropAddr")) %>% filter(is.na("APN")) %>% unique()
+
+# Remove any observations that aren't in the original data set
+
+APN_join2 <- APN_join2 %>%
+  filter(name %in% pop_venue_db$name)
 
 ## creating useful tables
 
@@ -97,24 +108,45 @@ venue_coordinates = venue_coordinates %>% select(-geometry) %>% st_drop_geometry
 venue_data = left_join(select(venue_data_join,-c(y,x,address,address_admin.y)),venue_coordinates) %>% rename(address_admin=address_admin.x)
 
 ## reformat multiple-choice survey answers to numeric so they can be aggregated (all metadata is saved in the data dictionary)
-variables_to_ordinal = c("ownership_structure","independent_booking","events_per_month","years_operating","funding_source","interdisciplinarity","event_promotion","purpose","community_focus","creativity","experimentation")
-to_ordinal=function(vector){
-  v = case_when(substr(x,1,1)=="1"~1,substr(x,1,1)=="2"~2,substr(x,1,1)=="3"~3,substr(x,1,1)=="4"~4)
-  return(v)
-}
-venue_data$ownership_structure_ord = to_ordinal(venue_data$ownership_structure)
-venue_data$independent_booking_ord = to_ordinal(venue_data$independent_booking)
-venue_data$events_per_month_ord = to_ordinal(venue_data$events_per_month)
-venue_data$years_operating_ord = to_ordinal(venue_data$years_operating)
-venue_data$funding_source_ord = to_ordinal(venue_data$funding_source)
-venue_data$interdisciplinarity_ord = to_ordinal(venue_data$interdisciplinarity)
-venue_data$event_promotion_ord = to_ordinal(venue_data$event_promotion)
-venue_data$purpose = to_ordinal(venue_data$purpose_ord)
-venue_data$community_focus_ord = to_ordinal(venue_data$community_focus)
-venue_data$creativity_ord = to_ordinal(venue_data$creativity)
-venue_data$experimentation_ord = to_ordinal(venue_data$experimentation)
 
-venue_data_done = venue_data
+#MF - I was having issues with this so I made a bunch of mutate code blocks below
+
+#variables_to_ordinal = c("ownership_structure","independent_booking","events_per_month","years_operating","funding_source","interdisciplinarity","event_promotion","purpose","community_focus","creativity","experimentation")
+#to_ordinal=function(vector){
+#  v = case_when(substr(x,1,1)=="1"~1,substr(x,1,1)=="2"~2,substr(x,1,1)=="3"~3,substr(x,1,1)=="4"~4)
+#  return(v)
+#}
+#venue_data$ownership_structure_ord = to_ordinal(venue_data$ownership_structure)
+#venue_data$independent_booking_ord = to_ordinal(venue_data$independent_booking)
+#venue_data$events_per_month_ord = to_ordinal(venue_data$events_per_month)
+#venue_data$years_operating_ord = to_ordinal(venue_data$years_operating)
+#venue_data$funding_source_ord = to_ordinal(venue_data$funding_source)
+#venue_data$interdisciplinarity_ord = to_ordinal(venue_data$interdisciplinarity)
+#venue_data$event_promotion_ord = to_ordinal(venue_data$event_promotion)
+#venue_data$purpose = to_ordinal(venue_data$purpose_ord)
+#venue_data$community_focus_ord = to_ordinal(venue_data$community_focus)
+#venue_data$creativity_ord = to_ordinal(venue_data$creativity)
+#venue_data$experimentation_ord = to_ordinal(venue_data$experimentation)
+
+#venue_data_done = venue_data
+
+venue_data_done <- venue_data %>%
+  mutate(interdisciplinarity_ord = case_when(substr(interdisciplinarity,1,1)=="1"~1,
+                                             substr(interdisciplinarity,1,1)=="2"~2,
+                                             substr(interdisciplinarity,1,1)=="3"~3,
+                                             substr(interdisciplinarity,1,1)=="4"~4)) %>%
+  mutate(event_promotion_ord = case_when(substr(event_promotion,1,1)=="1"~1,
+                                             substr(event_promotion,1,1)=="2"~2,
+                                             substr(event_promotion,1,1)=="3"~3,
+                                             substr(event_promotion,1,1)=="4"~4)) %>%
+  mutate(community_focus_ord = case_when(substr(community_focus,1,1)=="1"~1,
+                                             substr(community_focus,1,1)=="2"~2,
+                                             substr(community_focus,1,1)=="3"~3,
+                                             substr(community_focus,1,1)=="4"~4))  %>%
+  mutate(experimentation_ord = case_when(substr(experimentation,1,1)=="1"~1,
+                                         substr(experimentation,1,1)=="2"~2,
+                                         substr(experimentation,1,1)=="3"~3,
+                                         substr(experimentation,1,1)=="4"~4))
 
 ## detailed table (all venue and parcel information) - lots of redundant info so commented out
 #detailed_table = left_join(venue_data_done,parcels,by= c("Admin_Address"="PropAddr","APN")) %>% unique()
