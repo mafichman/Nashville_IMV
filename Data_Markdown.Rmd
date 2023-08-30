@@ -322,7 +322,7 @@ d1_aggregates = st_join(plan_dist, venue_full %>%
 ```
 
 Business Licenses Dataset cleaning
-```{r}
+```{r eval = FALSE}
 business_licenses = read.csv("~/Github/Nashville_IMV/data/metro/Business_Property.csv")
 
 venue_all_business_data = left_join(venue_admin_key_table,business_licenses,by="APN")

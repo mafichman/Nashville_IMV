@@ -1,7 +1,7 @@
 ---
 title: "Nashville Venues Project Data Portal"
 author: "Michael Fichman & Sofia Fasullo for PennPraxis"
-date: "7/14/2023"
+date: "8/29/2023"
 output:
   html_document:
     toc: yes
@@ -16,8 +16,15 @@ output:
 
 NOTES AND TO-DO's:
 
-- Run this with real Nashville d1 aggregates
-- Need to deal more in percentages - overall numbers of IMV vs non-IMV make graphic comparisons tough
+- Write a methodology section (Sofia)
+- Associate license data with venues in a separate script (Sofia)
+- Incorporate that script into the data_markdown script (Michael)
+- Annotate maps and charts, put proper text and styling (Sofia)
+- Add property condition, year built, building use and other data in the data_markdown (Michael)
+- Add capacity data and re-run data_markdown (TBD - ??)
+- Do some comparisons with CFP database (Michael)
+- Write top takeaways (Michael)
+- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes - this will be done as needed during the writing process (Sofia)
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -880,7 +887,7 @@ nash_venue_data %>%
 
 ```
 
-## 5.2. Zoning
+## 5.2. Zoning and Land Use
 
 
 ```{r}
@@ -1071,6 +1078,8 @@ ggplot(data = d1_aggregates_nash %>%
   plotTheme
 
 ```
+
+## 5.5. Venue Structures and Property Characteristics
 
 # 6. Venues and Regulation
 
