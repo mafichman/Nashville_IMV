@@ -20,10 +20,11 @@ NOTES AND TO-DO's:
 - Associate license data with venues in a separate script (Sofia)
 - Incorporate that script into the data_markdown script (Michael)
 - Annotate maps and charts, put proper text and styling (Sofia)
-- Add property condition, year built, building use and other data in the data_markdown (Michael)
+- Add property condition, year built, building use and other data in the data_markdown (Michael) DONE
 - Add capacity data and re-run data_markdown (TBD - ??)
 - Do some comparisons with CFP database (Michael)
 - Write top takeaways (Michael)
+- Analyze recent sales values and impart risk scores (Michael) - IN PROGREDSS
 - Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes - this will be done as needed during the writing process (Sofia)
 
 ```{r setup, include=FALSE}
@@ -117,7 +118,7 @@ source("~/GitHub/CFP/unified__city_data/epsg_list.R")
 # LOAD IN THE NASH DATA
 
 # Read in district aggregates
-d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v4.geojson") %>%
+d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v5.geojson") %>%
   st_as_sf(crs = 4326) %>%
   rename(venue_count = num_venues,
          d1_name = Communit_1)
@@ -128,7 +129,7 @@ d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregat
 
 
 # Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 7/18/2023
-nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v3.geojson") %>%
+nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v4.geojson") %>%
   st_transform(crs = 4326) %>%
   group_by(name) %>%
   slice(1) %>%
@@ -154,6 +155,26 @@ st_transform(dat, proj4)
 base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash),10000)))),
                     force = TRUE, maptype = "toner-lite", zoom = 11)
 
+```
+
+```{r functions, include=FALSE}
+#function to calculate the distribution of values in any given column with the option to group by another column
+calculate_share <- function(dat, col, facetCol = "") {
+  if(facetCol != ""){
+    dat <- dat %>%
+                  group_by(!!sym(col), !!sym(facetCol)) %>% 
+                  summarise(count = n()) %>% 
+                  group_by(!!sym(facetCol)) %>%
+                  mutate(share = count/sum(count)*100)
+  }
+  else {
+    dat <- dat %>% 
+                  group_by(!!sym(col)) %>% 
+                  summarize(count = n()) %>% 
+                  mutate(share = count/sum(count)*100)
+  }
+  return(dat)
+}
 ```
 
 # 1. Key Takeaways
@@ -441,6 +462,8 @@ ggplot(data = nash_venue_data)+
 
 ### 4.4.1. Histogram of capacity
 
+NOTE - These data are not complete as of 9/5 - we are awaiting data from Nash FD - these are data from the Chamber's study several years ago.
+
 ```{r community_histogram}
 ggplot(data = nash_venue_data %>%
          mutate(capacity = as.numeric(capacity)) %>%
@@ -547,15 +570,11 @@ ggplot(nash_venue_data %>%
 
 ```{r}
 
-ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+ggplot(nash_venue_data)+
   geom_bar(aes(events_per_month), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Events Per Month",
+    title = "Events Per Month - All Spaces",
     subtitle = "",
     x="",
     y="Total Venues",
@@ -563,14 +582,11 @@ ggplot(nash_venue_data %>%
   plotTheme
 
 ggplot(nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")))+
+        filter(music_space == "Music Space"))+
   geom_bar(aes(events_per_month), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Events Per Month",
+    title = "Events Per Month, Music Spaces",
     subtitle = "",
     x="",
     y="Total Venues",
@@ -590,13 +606,20 @@ This data isn't any good - scrapping this
 
 ### 4.6.1. Experimentation
 
+There is a bi-modal effect with experimentation, it's either very experimental or not at all.
+
+Maybe a better question is - what percentage of spaces are consider likely to offer experimental content between IMV/Non/Quasi?
+
+Answer - roughly 40%, higher than Quasi and non-IMV
+
 ```{r}
 
-ggplot(nash_venue_data )+
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
   geom_bar(aes(experimentation), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Experimentation Likelihood",
+    title = "Experimentation Likelihood - Music Spaces",
     subtitle = "Q: Compared to other venues in the city: Is this venue a platform for niche or experimental trends, sounds and art forms? Is it a place for experimental performers or extraordinary event concepts?",
     x="",
     y="Total Venues",
@@ -606,7 +629,8 @@ ggplot(nash_venue_data )+
 
 
 ```{r}
-ggplot(nash_venue_data )+
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
   geom_bar(aes(experimentation), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -620,12 +644,25 @@ ggplot(nash_venue_data )+
 
 ```
 
+On average, IMVs are slightly more experimental
+
 ```{r}
 nash_venue_data %>%
   group_by(IMV, music_space) %>%
   summarize(mean_experimentation = mean(experimentation_ord, na.rm = TRUE),
             n = n()) %>%
   arrange(music_space) %>%
+  kable()
+
+
+```
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  group_by(IMV, experimentation) %>%
+  tally() %>%
+  mutate(pct = 100*(n/sum(n))) %>%
   kable()
 
 
@@ -680,7 +717,8 @@ ggplot(nash_venue_data )+
 ```
 
 ```{r}
-ggplot(nash_venue_data)+
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
   geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -711,11 +749,12 @@ nash_venue_data %>%
 
 ```{r}
 
-ggplot(nash_venue_data)+
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
   geom_bar(aes(community_focus), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Community Focus",
+    title = "Community Focus - Music Spaces",
     subtitle = "Q: Is the venue likely to be any of the following... a consistent platform for a niche genre, a space for underrepresented communities or music scenes, a neighbourhood community hub, and not e.g. walk in tourists?",
     x="",
     y="Total Venues",
@@ -726,11 +765,12 @@ ggplot(nash_venue_data)+
 
 
 ```{r}
-ggplot(nash_venue_data)+
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
   geom_bar(aes(community_focus), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Community Focus",
+    title = "Community Focus - Music Spaces",
     subtitle = "Q: Is the venue likely to be any of the following... a consistent platform for a niche genre, a space for underrepresented communities or music scenes, a neighbourhood community hub, and not e.g. walk in tourists?",
     x="",
     y="Total Venues",
@@ -753,17 +793,44 @@ nash_venue_data %>%
 
 ```
 
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  group_by(IMV, community_focus) %>%
+  tally() %>%
+  mutate(pct = 100*(n/sum(n))) %>%
+  kable()
+
+
+```
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(likely_community_focus = ifelse(str_detect(community_focus, "Somewhat") |
+                                           str_detect(community_focus, "Very"),
+                                         "Somewhat or Very Likely Community Focus",
+                                         "Not At All or Not too Likely")) %>%
+  group_by(IMV, likely_community_focus) %>%
+  tally() %>%
+  mutate(pct = 100*(n/sum(n))) %>%
+  kable()
+
+
+```
+
 
 ### 4.6.5. Promoting Events
 
 
 ```{r}
 
-ggplot(nash_venue_data)+
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
   geom_bar(aes(event_promotion), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Promoting Artistic Content",
+    title = "Promoting Artistic Content - Music Spaces",
     subtitle = "Q: Is the promotion and marketing of this space focused on artistic content (artists, lineups, performances)?",
     x="",
     y="Total Venues",
@@ -774,7 +841,8 @@ ggplot(nash_venue_data)+
 
 
 ```{r}
-ggplot(nash_venue_data)+
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
   geom_bar(aes(event_promotion), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
@@ -887,19 +955,6 @@ nash_venue_data %>%
 
 ```
 
-## 5.2. Zoning and Land Use
-
-
-```{r}
-nash_venue_data %>%
-  group_by(ZONE_DESC) %>%
-  tally() %>%
-  arrange(-n)
-
-```
-
-## 5.3. Square footage costs
-
 MF - what are these indies with the super high sq footage values?
 
 ```{r}
@@ -911,12 +966,56 @@ nash_venue_data %>%
   filter(value_sqft < 1000) %>%
   ggplot()+
   geom_point(aes(y = programming_sum, x = value_sqft, color = IMV))+
-  geom_smooth(aes(y = programming_sum, x = value_sqft), method = "loess", se = FALSE)+
+  geom_smooth(aes(y = programming_sum, x = value_sqft), method = "lm", se = FALSE)+
   plotTheme
 
 ```
 
-## 5.4.  Venues by planning area / neighborhood
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
+           community_focus_ord + event_promotion_ord) %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  filter(value_sqft < 1000) %>%
+  ggplot()+
+  geom_point(aes(y = programming_sum, x = value_sqft))+
+  geom_smooth(aes(y = programming_sum, x = value_sqft), method = "lm", se = FALSE)+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+## 5.2. Zoning and Land Use
+
+
+```{r}
+nash_venue_data %>%
+  group_by(ZONE_DESC) %>%
+  tally() %>%
+  arrange(-n)
+
+```
+
+## 5.3. Building Age
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  ggplot()+
+  geom_histogram(aes(YearBuilt), binwidth = 10)+
+  facet_wrap(~IMV)+
+  plotTheme
+  
+
+```
+
+## 5.4. Building Condition
+
+
+
+## 5.5.  Venues by planning area / neighborhood
 
 All music spaces
 
@@ -1079,8 +1178,6 @@ ggplot(data = d1_aggregates_nash %>%
 
 ```
 
-## 5.5. Venue Structures and Property Characteristics
-
 # 6. Venues and Regulation
 
 - What kind of licenses are associated with these venues?
@@ -1096,7 +1193,7 @@ nash_venue_data %>%
   filter(threats_neighbors == 1 |
            threats_cost == 1 |
            threats_licensing == 1) %>%
-  select(name, address_admin, APN, threats_neighbors, threats_cost, threats_licensing) %>%
+  select(name, address_admin, APN, threats_neighbors, threats_cost, threats_licensing, Condition, TotlAssd) %>%
   kable() %>%
   kable_styling()
   
@@ -1107,6 +1204,8 @@ nash_venue_data %>%
 # 8. Change in Nashville
 
 - Map of change in rents by census tract (over 10 years)
+
+## 8.2. Property appraisal values for recent sales
 
 - Price per sqft by grid cell in Nashville (based on cadastral data)
 
@@ -1119,7 +1218,7 @@ Filtering non-zero sales since 2020, joining to fishnet and averaging sales pric
 ```{r}
 fishnet_parcels <- st_make_grid(d1_aggregates_nash %>%
                           st_transform(crs = 2274), 
-                        cellsize = 5280) %>% #size in feet - half mile
+                        cellsize = 5280/2) %>% #size in feet - half mile
   st_sf() %>%
   st_transform(crs = 4326)
 
@@ -1147,7 +1246,8 @@ fishnet_parcels <- st_join(fishnet_parcels,
                 left = TRUE) %>%
   select(uniqueID, TotlAppr, starea) %>%
   group_by(uniqueID) %>% 
-  summarise(medianAssessment = median(TotlAppr/Area_sqft, na.rm = TRUE)) %>%
+  summarise(medianAppraisal = median(TotlAppr/starea, na.rm = TRUE),
+            n_sales = n()) %>%
   #mutate(n = ifelse(n == 1, 0, n)) %>%
   #rename(n_venues = n) %>%
   as.data.frame() %>%
@@ -1159,34 +1259,81 @@ fishnet_parcels <- st_join(fishnet_parcels,
 
 # Make sure you set the labels here to reflect the actual max density by cell
 
-max(fishnet_parcels$medianAssessment)
+max(fishnet_parcels$medianAppraisal)
 
 ggplot()+
   geom_sf(data = fishnet_parcels %>%
-            filter(is.na(medianAssessment) == FALSE), 
-          aes(fill = medianAssessment),
+            filter(is.na(medianAppraisal) == FALSE), 
+          aes(fill = medianAppraisal),
           color = "transparent",
-          alpha = 0.4)+
+          alpha = 0.6)+
  scale_fill_viridis('Price sqft', direction = -1)+
   geom_sf(data = d1_aggregates_nash %>%
             st_transform(4326), fill = "transparent")+
   geom_point(data = nash_venue_data %>%
-         mutate(IMV = ifelse(independent_booking == "3. Never" &
-                                        ownership_structure == "1. Yes",
-                                      "IMV",
-                                      "Non-IMV")) %>%
-           filter(IMV == "IMV"),
+         filter(music_space == "Music Space") %>%
+           filter(IMV == "Indep. Owned and Operated"),
              aes(x = x, y = y, color = IMV),
-             size = 1.75,
+             size = 1.5,
              alpha = 0.5)+
   labs(
-    title = "Median Sale Price per Square Foot, 2021-23",
-    subtitle = "",
+    title = "Median Appraised Value per Square Foot, Sales 2021-23",
+    subtitle = "Half mile grid",
     caption = "Data: PennPraxis, Metro Nashville")+
   mapTheme
 ```
 
-- Identification of development "hot spots" and related venues
+## 8.2.1. Venue exposure to real estate risk
+
+Venue Appraised Value / sqft relative to median area appraisal (fishnet cell)
+
+If the value is "above" the y = x line, that means the neighborhood square footage appraisal value of recent sales is higher than the square footage appraisal value of the building.
+
+```{r}
+nash_venue_data %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  st_as_sf(coords = c("x", "y"), 
+                              crs = 4269) %>%
+                     st_transform(4326) %>%
+  st_join(., fishnet_parcels) %>%
+  filter(value_sqft < 1000) %>%
+  filter(music_space == "Music Space") %>%
+  ggplot()+
+  geom_point(aes(x = value_sqft, medianAppraisal))+
+  geom_abline(slope = 1)+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+## 8.2.2. Risk indicators
+
+Total area sales (half mile grid cell), appraised value, appraised value relative to area appraisal median (2021-23), IMV status, programming rating.
+
+THIS ISN'T DONE YET
+
+```{r}
+nash_venue_data %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  st_as_sf(coords = c("x", "y"), 
+                              crs = 4269) %>%
+                     st_transform(4326) %>%
+  st_join(., fishnet_parcels) %>%
+  mutate(appraisal_ratio = 100*(medianAppraisal/value_sqft)) %>%
+  mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
+           community_focus_ord + event_promotion_ord) %>%
+  as.data.frame() %>%
+  select(value_sqft,  name, address_admin, n_sales)%>%
+  gather(-name, -address_admin, key = "variable", value = "value") %>%
+  group_by(variable) %>%
+  mutate(quantile = quantile(value, c(0.25, 0.5, 0.75), na.rm = TRUE)) %>%
+  ungroup() %>%
+  kable() %>%
+  kable_styling()
+
+```
+
+
 
 - What are the areas of opportunity (e.g. can we ID relatively lower rent areas with high percentages of young adults, reasonable proximity to downtown?)
 

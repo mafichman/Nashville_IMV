@@ -38,7 +38,7 @@ venues = read.csv("~/Github/Nashville_IMV/data/venue_tables/new_8_24/venue_table
   st_as_sf(coords = c("x","y"), 
            remove = FALSE, 
            crs= 4326, na.fail = FALSE) %>%
-  group_by(name, address_admin, APN) %>%
+  group_by(name) %>%
   slice(1) %>%
   ungroup()
 
@@ -212,7 +212,7 @@ venue_all_parcel_data = left_join(venues_dist %>%
 
 variables_parcels = c("name", "address_admin", "APN", "TotlAppr", 
                       "LandAppr", "ImprAppr", "OwnDate", "AssessDate",
-                      "TotlAssd", "LandAssd", "ImprAssd",
+                      "TotlAssd", "LandAssd", "ImprAssd", "ParID",
                       "SalePrice", "Acres", "FinishArea", "LUDesc", 
                       "Owner", "OwnAddr1", "OwnAddr2", "OwnCity",
                       "OwnState", "OwnZip", "Council", "geometry")
@@ -321,7 +321,23 @@ d1_aggregates = st_join(plan_dist, venue_full %>%
 
 ```
 
-Business Licenses Dataset cleaning
+## Building Conditions database
+
+Load building conditions shp, join to venue_full by parcel ID
+
+```{r}
+
+conditions <- st_read("~/Github/Nashville_IMV/data/metro/Build/Build/Build/Prop_Polys_with_Build_Characteristics.shp") %>% st_transform(4326)
+
+venue_full <- left_join(venue_full, conditions %>% 
+                    as.data.frame() %>% 
+                    select(Condition, YearBuilt, APN, ParcelID), 
+                  by = c("ParID" = "ParcelID", "APN" = "APN")) %>%
+  group_by(name) %>%
+  slice(1) %>%
+  ungroup()
+```
+## Business Licenses Dataset cleaning
 ```{r eval = FALSE}
 business_licenses = read.csv("~/Github/Nashville_IMV/data/metro/Business_Property.csv")
 
@@ -336,8 +352,8 @@ venue_select_business_data = select(venue_all_business_data,all_of(variables_bus
 
 ```{r}
 
-st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v4.geojson")
+st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v5.geojson")
 
-st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v3.geojson")
+st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v4.geojson")
 
 ```
