@@ -1310,26 +1310,71 @@ nash_venue_data %>%
 
 Total area sales (half mile grid cell), appraised value, appraised value relative to area appraisal median (2021-23), IMV status, programming rating.
 
-THIS ISN'T DONE YET
+Formula:
+
+Risk = sum of:
+
+Quartile Value (amongst music spaces) of:
+-Appraised Sqft Value
+-Median value of appraisals in sales since 2021 w/in half mile
+-Number of sales since 2021 w/in half mile
+-Parcel appraised value as a pct of sqft value of sales w/in half mile
+
+Plus:
+-Physical condition (1 if average, 2 if fair, 4 if poor or very poor)
+Community ranked Programming investment (e.g. experimentation, community focus 1 - 4)
+
+WOULD LIKE TO ADD CAPACITY TO THIS
 
 ```{r}
-nash_venue_data %>%
+risk_matrix <- nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
   mutate(value_sqft = TotlAppr/Area_sqft) %>%
   st_as_sf(coords = c("x", "y"), 
                               crs = 4269) %>%
                      st_transform(4326) %>%
   st_join(., fishnet_parcels) %>%
   mutate(appraisal_ratio = 100*(medianAppraisal/value_sqft)) %>%
-  mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
-           community_focus_ord + event_promotion_ord) %>%
   as.data.frame() %>%
-  select(value_sqft,  name, address_admin, n_sales)%>%
+  select(value_sqft, appraisal_ratio, experimentation_ord, community_focus_ord,
+         name, address_admin, n_sales, medianAppraisal)%>%
   gather(-name, -address_admin, key = "variable", value = "value") %>%
   group_by(variable) %>%
-  mutate(quantile = quantile(value, c(0.25, 0.5, 0.75), na.rm = TRUE)) %>%
-  ungroup() %>%
-  kable() %>%
-  kable_styling()
+  summarize(quantile = scales::percent(c(0.25, 0.5, 0.75)), 
+            quartile = quantile(value, c(0.25, 0.5, 0.75), na.rm = TRUE)) %>%
+  spread(quantile, quartile) %>% # join it back to the original data analysis
+  left_join(., nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  st_as_sf(coords = c("x", "y"), 
+                              crs = 4269) %>%
+                     st_transform(4326) %>%
+  st_join(., fishnet_parcels) %>%
+  mutate(appraisal_ratio = 100*(medianAppraisal/value_sqft)) %>%
+  mutate(programming_sum = experimentation_ord +
+           community_focus_ord + event_promotion_ord) %>%
+  as.data.frame() %>%
+   select(value_sqft, appraisal_ratio, experimentation_ord, community_focus_ord,
+         name, address_admin, n_sales, medianAppraisal)%>%
+  gather(-name, -address_admin, key = "variable", value = "value"))%>% 
+  mutate(quantile = case_when(value >= `75%` ~ 4,
+                              value <= `25%` ~ 1,
+                              value > `25%` & value < `50%` ~ 2,
+                              value >= `50%` & value < `75%` ~ 3)) %>%
+  select(-'25%', -'50%', -'75%') %>%
+  group_by(name, address_admin, variable) %>%
+  summarize(quantile = quantile) %>%
+  pivot_wider(names_from = variable, values_from = quantile) %>%
+  left_join(., nash_venue_data %>%
+              filter(music_space == "Music Space") %>%
+              select(IMV, name, address_admin, APN, music_space, Condition)) %>%
+  mutate(Condition_ord = case_when(str_detect(Condition, "Poor") == TRUE ~ 4,
+                                   str_detect(Condition, "Fair") == TRUE ~ 2,
+                                   str_detect(Condition, "Average") == TRUE ~ 1,
+                                   is.na(Condition) == TRUE ~ 1)) %>%
+  mutate(cumulative_risk = sum(appraisal_ratio + value_sqft+ Condition_ord +
+                                 experimentation_ord + community_focus_ord+ 
+                                 medianAppraisal + n_sales, na.rm = TRUE))
 
 ```
 
