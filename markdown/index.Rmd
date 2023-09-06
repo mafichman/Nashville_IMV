@@ -24,8 +24,10 @@ NOTES AND TO-DO's:
 - Add capacity data and re-run data_markdown (TBD - ??)
 - Do some comparisons with CFP database (Michael)
 - Write top takeaways (Michael)
-- Analyze recent sales values and impart risk scores (Michael) - IN PROGREDSS
+- Analyze recent sales values and impart risk scores (Michael) - DONE
 - Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes - this will be done as needed during the writing process (Sofia)
+
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -186,6 +188,7 @@ calculate_share <- function(dat, col, facetCol = "") {
 - IMVS are less likely to use their space for non-music programs and uses
 - About X% of music spaces in Nashville are "Occasional" music spaces - with programming focused on other types of business and/or infrequent events
 - Spaces with lower land values are investing more in community-oriented and experimental programming (IMV or not)
+- Researchers and community members identified 253 spaces used for music in Nashville on a periodic or regular basis.
 
 # 2. Data Sources
 
@@ -197,7 +200,7 @@ calculate_share <- function(dat, col, facetCol = "") {
 
 - Nashville Metro Cadastral
 
-- Nashville Metro Parcels
+- Nashville Metro Parcels, Property Characteristics
 
 - Nashville Metro Fire Inspection Data
 
