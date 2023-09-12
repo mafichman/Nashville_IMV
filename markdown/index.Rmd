@@ -16,17 +16,28 @@ output:
 
 NOTES AND TO-DO's:
 
-- Write a methodology section (Sofia)
-- Associate license data with venues in a separate script (Sofia)
-- Incorporate that script into the data_markdown script (Michael)
-- Annotate maps and charts, put proper text and styling (Sofia)
-- Add property condition, year built, building use and other data in the data_markdown (Michael) DONE
-- Add capacity data and re-run data_markdown (TBD - ??)
-- Do some comparisons with CFP database (Michael)
-- Write top takeaways (Michael)
-- Analyze recent sales values and impart risk scores (Michael) - DONE
-- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes - this will be done as needed during the writing process (Sofia)
+Week of 9/6
 
+- Associate license data with venues in a separate script (Sofia) - URGENT
+
+Week of 9/13
+
+- Write a methodology section (Sofia) - Week of 9/13-20
+- Annotate maps and charts, put proper text and styling (Sofia) - Week of 9/13-20
+- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes - this will be done as needed during the writing process (Sofia) - Week of 9/13-20
+- Write top takeaways (Michael)
+
+
+Unknown timeframe
+
+- Add capacity data and re-run data_markdown (TBD - ??)
+
+
+Recently finished:
+
+- Add property condition, year built, building use and other data in the data_markdown (Michael) DONE
+- Analyze recent sales values and impart risk scores (Michael) - DONE
+- Do some comparisons with CFP database (Michael) - DONE
 
 
 ```{r setup, include=FALSE}
@@ -182,13 +193,23 @@ calculate_share <- function(dat, col, facetCol = "") {
 # 1. Key Takeaways
 
 - IMVs are in spaces valued at far less per sqft than non-IMVs
+
 - IMVs are doing more experimental programming
+
 - IMVs are more community-focused on average
+
 - IMVs are more likely to promote lineups and artists in their marketing
+
 - IMVS are less likely to use their space for non-music programs and uses
+
 - About X% of music spaces in Nashville are "Occasional" music spaces - with programming focused on other types of business and/or infrequent events
+
 - Spaces with lower land values are investing more in community-oriented and experimental programming (IMV or not)
+
 - Researchers and community members identified 253 spaces used for music in Nashville on a periodic or regular basis.
+
+
+- Amongst CFP cities - Nashville has a profile most similar to that of Stockholm - relatively low scores on experimentation, community program - but it was ranked comparatively well on the fact that venues promote music as a core offer. This comparison is based on all of the music spaces collected in in the community process, not just the regular music spaces (other CFP city databases also consist of spaces that host music a minimum of once per month)
 
 # 2. Data Sources
 
@@ -849,12 +870,27 @@ ggplot(nash_venue_data %>%
   geom_bar(aes(event_promotion), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Promoting Artistic Content",
+    title = "Promoting Artistic Content - Music Spaces",
     subtitle = "Q: Is the promotion and marketing of this space focused on artistic content (artists, lineups, performances)?",
     x="",
     y="Total Venues",
     caption = "Data: PennPraxis")+
   facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+```{r}
+ggplot(nash_venue_data)+
+  geom_bar(aes(event_promotion), fill = CityPalette[6], alpha = 0.6, size = 3)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Promoting Artistic Content",
+    subtitle = "Q: Is the promotion and marketing of this space focused on artistic content (artists, lineups, performances)?",
+    x="",
+    y="Total Venues",
+    caption = "Data: PennPraxis")+
+  facet_grid(music_space~IMV)+
   plotTheme
 
 ```
@@ -871,7 +907,49 @@ nash_venue_data %>%
 
 ## 4.7. CFP Comparisons
 
-- How do some important metrics compare to other cities in CFP database?
+```{r}
+main_venue_data %>%
+  select(city, promotion, community_focus, experimentation) %>%
+  rbind(., nash_venue_data %>%
+          mutate(city = "Nashville") %>%
+          rename(promotion = event_promotion) %>%
+          select(city, promotion, community_focus, experimentation)) %>%
+  gather(-city, value = "value", key = "variable") %>%
+  mutate(value = case_when(str_detect(value, "1") == TRUE ~ "1. Not At All Likely",
+                           str_detect(value, "2") == TRUE ~ "2. Not Too Likely",
+                           str_detect(value, "3") == TRUE ~ "3. Somewhat Likely",
+                           str_detect(value, "4") == TRUE ~ "4. Very Likely")) %>%
+  filter(is.na(value) == FALSE,
+         city != "") %>%
+  ggplot()+
+  geom_bar(aes(value))+
+  facet_grid(city~variable, scales = "free")+
+  plotTheme
+
+```
+
+
+```{r}
+main_venue_data %>%
+  select(city, promotion, community_focus, experimentation) %>%
+  rbind(., nash_venue_data %>%
+          mutate(city = "Nashville") %>%
+          rename(promotion = event_promotion) %>%
+          select(city, promotion, community_focus, experimentation)) %>%
+  gather(-city, value = "value", key = "variable") %>%
+  mutate(value = case_when(str_detect(value, "1") == TRUE ~ 1,
+                           str_detect(value, "2") == TRUE ~ 2,
+                           str_detect(value, "3") == TRUE ~ 3,
+                           str_detect(value, "4") == TRUE ~ 4)) %>%
+  filter(is.na(value) == FALSE,
+         city != "") %>%
+  group_by(city, variable) %>%
+  summarize(mean_score = mean(value)) %>%
+  ggplot()+
+  geom_bar(aes(y = mean_score, x = variable, fill = city), stat = "identity", position = "dodge")+
+  plotTheme
+
+```
 
 # 5. Venues and The City
 
@@ -1180,6 +1258,9 @@ ggplot(data = d1_aggregates_nash %>%
   plotTheme
 
 ```
+
+
+
 
 # 6. Venues and Regulation
 
