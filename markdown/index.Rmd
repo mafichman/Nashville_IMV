@@ -28,9 +28,14 @@ Week of 9/13
 - Write top takeaways (Michael)
 
 
+Week of 9/20
+
+- Create graphics for each venue zoom in - see end of document
+
+
 Unknown timeframe
 
-- Add capacity data and re-run data_markdown (TBD - ??)
+- Add capacity data and re-run data_markdown with "venue ladder" and cfp comparison (TBD - ??)
 
 
 Recently finished:
@@ -192,7 +197,13 @@ calculate_share <- function(dat, col, facetCol = "") {
 
 # 1. Key Takeaways
 
-- IMVs are in spaces valued at far less per sqft than non-IMVs
+## 1.1. Venue database characteristics
+
+- Researchers, community members, and focus group experts identified 253 spaces used for music in Nashville on a periodic or regular basis (Section 4). 114 of these were identified as being "Music Spaces", where music is likely to be the primary offer, and events are held more than once per week. The remainder (139) were considered "Occasional Music Spaces" (Section 4.1.2)
+
+- 23 of these Music Spaces (and 14 Occasional Music Spaces) were identified by researchers, community members, and focus group experts as likely to be IMVs. 50 Music Spaces were identified as being "Quasi-Independent" because some of their functions were assessed as likely to be contracted to corporate outside entities or they had legal ownership affiliations to other businesses. 41 Music Spaces were assessed as likely to be completely non-independent. 
+
+## 1.2. Community programming assessment
 
 - IMVs are doing more experimental programming
 
@@ -202,14 +213,31 @@ calculate_share <- function(dat, col, facetCol = "") {
 
 - IMVS are less likely to use their space for non-music programs and uses
 
-- About X% of music spaces in Nashville are "Occasional" music spaces - with programming focused on other types of business and/or infrequent events
+## 1.3. Economic Geography
 
 - Spaces with lower land values are investing more in community-oriented and experimental programming (IMV or not)
 
-- Researchers and community members identified 253 spaces used for music in Nashville on a periodic or regular basis.
+- Concentration by districts, programming by districts, co-location with young adults (by district)
 
+- The core of Nashville's live music cluster is dominated by non-IMVs. IMVs on average, locate further away from the center of the cluster. This is the area most frequented by tourists and best served by regional transportation.
+
+- IMVs are in spaces valued at far less per sqft than non-IMVs. 
+
+## 1.4. Land Use, Regulation and Building Characteristics
+
+- Zoning - what are the types we are seeing
+
+- Building quality
+
+- Capacities
+
+## 1.5. Multi-City Comparison with CFP Database
 
 - Amongst CFP cities - Nashville has a profile most similar to that of Stockholm - relatively low scores on experimentation, community program - but it was ranked comparatively well on the fact that venues promote music as a core offer. This comparison is based on all of the music spaces collected in in the community process, not just the regular music spaces (other CFP city databases also consist of spaces that host music a minimum of once per month)
+
+## 1.7. US Census Analysis
+
+TBD
 
 # 2. Data Sources
 
@@ -1157,7 +1185,7 @@ ggplot()+
 
 ```
 
-- Surface map of real estate values by square foot with indie venues on top (this is found later)
+
 
 - k=5 mean square footage costs of recent sales (inflation adjusted) for indies
 
@@ -1259,7 +1287,58 @@ ggplot(data = d1_aggregates_nash %>%
 
 ```
 
+## 5.6. Venues, Programming and Centrality
 
+What is the geometric center of venue activity in Nashville?
+
+```{r}
+nash_venue_data %>%
+  summarize(centroid_x = mean(x),
+            centroid_y = mean(y)) %>%
+  ggplot()+
+  geom_sf(data = d1_aggregates_nash, fill = "transparent") +
+  geom_point(aes(x = centroid_x, y = centroid_y))+
+  mapTheme
+
+```
+
+IMVs are located, on average, 2.6 miles from the geographic center of the Nashville venue cluster, while non-IMVs are located, on average, 1.8 miles.
+
+```{r}
+centroid_point <- nash_venue_data %>%
+  summarize(centroid_x = mean(x),
+            centroid_y = mean(y)) %>%
+  st_as_sf(coords = c("centroid_x", "centroid_y"), crs = 4326) %>%
+  st_transform(2274)
+
+```
+
+```{r}
+nash_venue_data %>%
+  st_as_sf(crs = 4326) %>%
+  st_transform(2274) %>%
+  mutate(centroid_dist = st_distance(., centroid_point)) %>%
+  filter(music_space == "Music Space") %>%
+  as.data.frame() %>%
+  group_by(IMV) %>%
+  summarize(mean_dist = mean(centroid_dist) / 5280,
+            median = median(centroid_dist) / 5280)
+
+```
+
+```{r}
+
+nash_venue_data %>%
+  st_as_sf(crs = 4326) %>%
+  st_transform(2274) %>%
+  mutate(centroid_dist = as.numeric(st_distance(., centroid_point))/5280) %>%
+  filter(music_space == "Music Space") %>%
+  as.data.frame() %>%
+  ggplot()+
+  geom_density(aes(centroid_dist, color = IMV))+
+  plotTheme
+
+```
 
 
 # 6. Venues and Regulation
