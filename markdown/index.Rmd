@@ -18,11 +18,11 @@ NOTES AND TO-DO's:
 
 Week of 9/6
 
-- Associate license data with venues in a separate script (Sofia) - URGENT
+- Associate license data with venues in a separate script (Sofia) - by 9/15
 
 Week of 9/13
 
-- Write a methodology section (Sofia)
+- Write a methodology and data sources section (Sofia)
 - Annotate maps and charts, put proper text and styling (Sofia)
 - Write top takeaways (Michael)
 - K-means spatial clustering (Michael)
