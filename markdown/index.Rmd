@@ -22,20 +22,22 @@ Week of 9/6
 
 Week of 9/13
 
-- Write a methodology section (Sofia) - Week of 9/13-20
-- Annotate maps and charts, put proper text and styling (Sofia) - Week of 9/13-20
-- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes - this will be done as needed during the writing process (Sofia) - Week of 9/13-20
+- Write a methodology section (Sofia)
+- Annotate maps and charts, put proper text and styling (Sofia)
 - Write top takeaways (Michael)
+- K-means spatial clustering (Michael)
 
 
 Week of 9/20
 
 - Create graphics for each venue zoom in - see end of document
+- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes (Sofia)
 
 
 Unknown timeframe
 
 - Add capacity data and re-run data_markdown with "venue ladder" and cfp comparison (TBD - ??)
+- Render graphics for document
 
 
 Recently finished:
@@ -215,13 +217,15 @@ calculate_share <- function(dat, col, facetCol = "") {
 
 ## 1.3. Economic Geography
 
-- Spaces with lower land values are investing more in community-oriented and experimental programming (IMV or not)
-
-- Concentration by districts, programming by districts, co-location with young adults (by district)
+- Spaces with lower land values are observed to be more likely to present community-oriented and experimental programming (IMV or not)
 
 - The core of Nashville's live music cluster is dominated by non-IMVs. IMVs on average, locate further away from the center of the cluster. This is the area most frequented by tourists and best served by regional transportation.
 
 - IMVs are in spaces valued at far less per sqft than non-IMVs. 
+
+- Although the core of the Nashville live music cluster is Downtown, IMVs are most concentrated in East Nashville. 
+
+- Concentration by districts, programming by districts, co-location with young adults (by district)
 
 ## 1.4. Land Use, Regulation and Building Characteristics
 
