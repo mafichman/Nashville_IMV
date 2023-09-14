@@ -22,18 +22,18 @@ Week of 9/6
 
 Week of 9/13
 
-- Write a methodology and data sources section (Sofia)
-- Annotate maps and charts, put proper text and styling (Sofia)
-- Write top takeaways (Michael)
-- K-means spatial clustering (Michael) - DONE
-- Fix some venue data points - before re-running with licenses:
+- Write a methodology and data sources sections - 2 and 3 (Sofia)
+- Annotate maps and charts, to contain proper titles, axis titles, and styling (Sofia)
+- Please double check the census data for Nashville (Sofia)
+- Write top takeaways (Michael) - DONE PENDING NEW DATA - NEED TO ADD SECTION NUMBER REFERENCES
+- Fix some venue data points - before re-running with licenses (Michael):
 
 Nissan Stadium events/month, 3rd and Lindsley independence
 
 Week of 9/20
 
-- Create graphics for each venue zoom in - see end of document
-- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes (Sofia)
+- Create graphics for each venue zoom in - see end of document - sect 9
+- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes (Sofia) - Sect. 8.1.
 
 
 Unknown timeframe
@@ -47,6 +47,7 @@ Recently finished:
 - Add property condition, year built, building use and other data in the data_markdown (Michael) DONE
 - Analyze recent sales values and impart risk scores (Michael) - DONE
 - Do some comparisons with CFP database (Michael) - DONE
+- k-means clustering (Michael)
 
 
 ```{r setup, include=FALSE}
@@ -221,25 +222,24 @@ calculate_share <- function(dat, col, facetCol = "") {
 
 ## 1.3. Economic Geography
 
-- Spaces with lower land values are observed to be more likely to present community-oriented and experimental programming (IMV or not)
+- Music spaces make strong locational choices based on a range of factors - including access to transportation and customers, but also based on land costs that allow for risk-taking in programming - local content, experimental content, and a music-focused program.
 
-- The core of Nashville's live music cluster is dominated by non-IMVs. IMVs on average, locate further away from the center of the cluster. This is the area most frequented by tourists and best served by regional transportation.
+- Nashville music spaces, like those observed elsewhere by CFP, are trading off programming investments and rents. - Regardless of type - music spaces with lower appraised value are observed to be more likely to present community-oriented and experimental programming (IMV or not).
 
-- IMVs are in spaces valued at far less per sqft than non-IMVs. 
+- Venues are also trading off independence against financial risk. IMVs are located in areas with dramatically lower land values than Quasi-IMVs and non-IMVs, on average. It's not clear the degree to which this might have been different before major closures in 2019-22 - but some notable former IMVs with high real estate risk moved into the Quasi and non-IMV categories. IMVs, by location, are exposed to lower localized sales volumes, lower ratio of venue land value to nearby venue land value) than non-IMV Music Spaces.
 
-- Although the core of the Nashville live music cluster is Downtown, IMVs are most concentrated in East Nashville. 
+- The geographic center of gravity of Nashville's live music cluster is Downtown. It is an incredibly dense cluster, with 52 music spaces and 55 occasional music spaces. However, IMVs tend to be located, on average, further from this centroid. Less than 10% of these music spaces are IMVs. IMVs are most concentrated in East Nashville, South Nashville. The downtown planning area has the highest percentage change in population density and rents amongst any Metro planning area from 2010-2020 - suggesting that the attractiveness of Downtown is increasing, and that conflicts with residents are inevitable. This is the area most frequented by tourists and best served by regional transportation. But the policy focus on the central cluster, by default, excludes IMVs.
 
-- Concentration by districts, programming by districts, co-location with young adults (by district)
+-  On average, venues in South, North, East and West Nashville were assessed by local focus groups and community members as having higher likelihood of experimental, community focused program than Downtown.
 
-- IMVs, by location, are exposed to less real estate risk (high localized sales volumes, high ratio of area land value to venue land value) than non-IMV Music Spaces. This perhaps a result of recent closures reducing the number of IMVs in high
 
 ## 1.4. Land Use, Regulation and Building Characteristics
 
 - Live music is played in an extraordinary variety of contexts in Nashville - in concert halls and auditoriums, but also in strip malls, restaurants, and stores, mixed use complexes with apartments or offices, hotels and even on docks and marinas. Most of the time, when music is being played, it's on land that is primarily being designated for use as something else. IMVs and Quasi-IMVs are more likely to be in bar/nightclub, restaurant or retail contexts, whereas Non-Independents span a very wide variety of uses, including large format industrial reuse and institutional spaces.
 
-- Zoning - what are the types we are seeing SOPHIA CAN YOU CHECK ON THE ZONING DESCRIPTIONS?
+- Building quality - building stock was generally listed as being "Average" with a small few exceptions
 
-- Building quality - building stock was generally listed as being "Average" with a small few exceptions.
+- Zoning - what are the types we are seeing SOPHIA CAN YOU CHECK ON THE ZONING DESCRIPTIONS?
 
 - Capacities
 
@@ -248,6 +248,8 @@ calculate_share <- function(dat, col, facetCol = "") {
 ## 1.5. Multi-City Comparison with CFP Database
 
 - Amongst CFP cities - Nashville has a profile most similar to that of Stockholm - relatively low scores on experimentation, community program - but it was ranked comparatively well on the fact that venues promote music as a core offer. This comparison is based on all of the music spaces collected in in the community process, not just the regular music spaces (other CFP city databases also consist of spaces that host music a minimum of once per month)
+
+- Nashville is similar to Montreal and Sydney in that it is automobile oriented - with demographic indicators less heavily driven by bid-rent functions and agglomeration effects associated with fixed transportation.
 
 ## 1.7. US Census Analysis
 
@@ -273,15 +275,13 @@ TBD
 
 What did we do?
 
-We collected the data set with liaisons, community members and desk research (this will be covered by VL in the report)
+We collected the data set with liaisons, community members and desk research
 
 We related each venue to it's APN number (a property identifier) and joined it to tax records, license records.
 
-We created variables for knn sq ft costs, dist to CBD centroid, joined venues to districts
+We created variables for sq ft costs, dist to CBD centroid, joined venues to districts and summarized programming variables.
 
 # 4. Venue Database
-
-Let's give descriptive statistics for the venue database
 
 Searchable database
 
@@ -934,6 +934,56 @@ nash_venue_data %>%
 
 ## 4.7. CFP Comparisons
 
+### 4.7.1. Venue Count
+
+```{r}
+main_venue_data %>%
+  group_by(city) %>%
+  tally() %>%
+  filter(city != "") %>%
+  rbind(., nash_venue_data %>%
+          mutate(city = "Nashville") %>%
+          group_by(city) %>%
+          tally) %>%
+  kable() %>%
+  kable_styling()
+
+```
+### 4.7.2. Venue Density by City
+
+```{r}
+d1_aggregates %>%
+  as.data.frame() %>%
+  filter(city != "Sydney") %>%
+  group_by(city) %>%
+  summarize(total_pop = sum(pop_t2),
+            total_venues = sum(venue_count, na.rm = TRUE),
+            area_sqkm = sum(area_km2)) %>%
+  rbind(.,
+        d2_aggregates %>%
+  as.data.frame() %>%
+  filter(city == "Sydney") %>%
+  group_by(city) %>%
+  summarize(total_pop = sum(pop_t2),
+            total_venues = sum(venue_count, na.rm = TRUE),
+            area_sqkm = sum(area_km2))) %>%
+  rbind(., d1_aggregates_nash %>%
+          st_transform(2274) %>%
+          mutate(city = "Nashville") %>%
+          mutate(area_sqkm = st_area(.)* 0.00000000929) %>%
+          as.data.frame() %>%
+          summarize(total_pop = sum(tot_pop20),
+                    total_venues = sum(venue_count, na.rm = TRUE),
+                    area_sqkm = sum(area_sqkm)) %>%
+          mutate(city = "Nashville")) %>%
+  mutate(venues_per_10k = total_venues / (total_pop/10000),
+         venue_sqkm = total_venues / area_sqkm)
+  
+
+```
+
+### 4.7.3. Programming Comparison
+
 ```{r}
 main_venue_data %>%
   select(city, promotion, community_focus, experimentation) %>%
@@ -1063,7 +1113,9 @@ nash_venue_data %>%
 
 ```
 
-MF - what are these indies with the super high sq footage values?
+MF - what are these indies with the super high sq footage values? These are in big mixed use buildings I believe.
+
+Hard to put much into this negative relationship with the outliers.
 
 ```{r}
 nash_venue_data %>%
@@ -1071,7 +1123,7 @@ nash_venue_data %>%
   mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   mutate(value_sqft = TotlAppr/Area_sqft) %>%
-  filter(value_sqft < 1000) %>%
+  filter(value_sqft < 750) %>%
   ggplot()+
   geom_point(aes(y = programming_sum, x = value_sqft, color = IMV))+
   geom_smooth(aes(y = programming_sum, x = value_sqft), method = "lm", se = FALSE)+
@@ -1086,7 +1138,7 @@ nash_venue_data %>%
   mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   mutate(value_sqft = TotlAppr/Area_sqft) %>%
-  filter(value_sqft < 1000) %>%
+  filter(value_sqft < 750) %>%
   ggplot()+
   geom_point(aes(y = programming_sum, x = value_sqft))+
   geom_smooth(aes(y = programming_sum, x = value_sqft), method = "lm", se = FALSE)+
