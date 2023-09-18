@@ -202,6 +202,8 @@ calculate_share <- function(dat, col, facetCol = "") {
 
 # 1. Key Takeaways
 
+Nashville is a globally significant live music cluster, comparable in scale to major international cities. It is, however, not characterized by an experimental or community-oriented programming approach. Nashville's IMVs are regarded by local music experts and community members as more likely to present experimental and local programming with a focus on the promotion of music and artists. IMVs are less likely to locate near the Downtown center of the cluster, and they are paying less, on average, for rent. This is consistent with observed patterns in Nashville and elsewhere where venues trade off investments in programming against rents. It also suggests that they are more risk-averse and vulnerable. Venues that regarded as likely to have operational relationships with corporate partners are willing to pay more in rent and tolerate more risk.
+
 ## 1.1. Venue database characteristics
 
 - Researchers, community members, and focus group experts identified 253 spaces used for music in Nashville on a periodic or regular basis (Section 4). 114 of these were identified as being "Music Spaces", where music is likely to be the primary offer, and events are held more than once per week. The remainder (139) were considered "Occasional Music Spaces" (Section 4.1.2)
@@ -247,7 +249,11 @@ calculate_share <- function(dat, col, facetCol = "") {
 
 ## 1.5. Multi-City Comparison with CFP Database
 
-- Amongst CFP cities - Nashville has a profile most similar to that of Stockholm - relatively low scores on experimentation, community program - but it was ranked comparatively well on the fact that venues promote music as a core offer. This comparison is based on all of the music spaces collected in in the community process, not just the regular music spaces (other CFP city databases also consist of spaces that host music a minimum of once per month)
+- Nashville has a higher per capita number of spaces where music is being presented (either occasionally or as a primary function) than was observed during CFP studies of New York (2018), Berlin (2017), Tokyo (2019), Stockholm (2021) or Montreal (2022). Of CFP cities, only Sydney had higher density - albeit in a study confined to a small portion of the metro area (2023).
+
+- Downtown Nashville is one of the highest density clusters of venues - comparable in size to centreal Berlin districts and Tokyo's Shibuya. East Nashville is also a globally significant cluster - with a number of venues rivaling that of major areas of nightlife.
+
+- Amongst CFP cities - Nashville has a program profile most similar to that of Stockholm - relatively low scores on experimentation, community program - but it was ranked comparatively well on the fact that venues promote music as a core offer. This comparison is based on all of the music spaces collected in in the community process, not just the regular music spaces (other CFP city databases also consist of spaces that host music a minimum of once per month)
 
 - Nashville is similar to Montreal and Sydney in that it is automobile oriented - with demographic indicators less heavily driven by bid-rent functions and agglomeration effects associated with fixed transportation.
 
@@ -949,11 +955,9 @@ main_venue_data %>%
   kable_styling()
 
 ```
-### 4.7.2. Venue Density by City
+### 4.7.2. Venue Density by City and Area
 
-THERE IS SOMETHING WRONG WITH THE TOTAL POPULATION NUMBER HERE FOR NASHVILLE
-
-Sydney's population represents only 2 of the 33 Local Government Areas in the metro region - City of Sydney and Inner West Council.
+Note - Sydney's population represents only 2 of the 33 Local Government Areas in the metro region - City of Sydney and Inner West Council.
 
 ```{r}
 d1_aggregates %>%
@@ -974,14 +978,38 @@ d1_aggregates %>%
   rbind(., d1_aggregates_nash %>%
           st_transform(2274) %>%
           mutate(city = "Nashville") %>%
-          mutate(area_sqkm = st_area(.)* 0.00000000929) %>%
+          mutate(area_sqkm = st_area(.)* 0.0000000929) %>%
           as.data.frame() %>%
           summarize(total_pop = sum(tot_pop20),
                     total_venues = sum(venue_count, na.rm = TRUE),
                     area_sqkm = sum(area_sqkm)) %>%
           mutate(city = "Nashville")) %>%
+  mutate(total_venues = ifelse(city == "Nashville", 253, total_venues)) %>%
   mutate(venues_per_10k = total_venues / (total_pop/10000),
          venue_sqkm = total_venues / area_sqkm)
+  
+
+```
+
+```{r}
+d1_aggregates %>%
+  as.data.frame() %>%
+  filter(city != "Sydney" & 
+           city != "New York") %>%
+  select(city, d1_name, venue_count) %>%
+  rbind(.,
+        d2_aggregates %>%
+  as.data.frame() %>%
+  filter(city %in% c("Sydney", "New York")) %>%
+  select(city, venue_count, d2_name) %>%
+    rename(d1_name = d2_name)) %>%
+  rbind(., d1_aggregates_nash %>%
+          as.data.frame() %>%
+          select(venue_count, d1_name) %>%
+          mutate(city = "Nashville")) %>%
+  arrange(-venue_count) %>%
+  kable() %>%
+  kable_styling()
   
 
 ```
@@ -1099,7 +1127,7 @@ nash_venue_data %>%
 
 ```
 
-Seems like IMVs and non-IMVs program similarly in practice vis-a-vis these measures... ON AVERAGE
+Seems like IMVs and non-IMVs program similarly in practice vis-a-vis these measures (excluding interdisciplinarity)... ON AVERAGE
 
 What about the exceptional examples??
 
@@ -1108,12 +1136,23 @@ No - it's basically the same!
 ```{r}
 nash_venue_data %>%
   filter(music_space == "Music Space") %>%
-  mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
+  mutate(programming_sum = experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   ggplot()+
-  geom_histogram(aes(programming_sum), binwidth = 1)+
+  geom_histogram(aes(programming_sum), binwidth = 2)+
   facet_wrap(~IMV)+
   plotTheme
+
+```
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(programming_sum = experimentation_ord +
+           community_focus_ord + event_promotion_ord) %>%
+  group_by(IMV) %>%
+  summarize(mean_programming_sum = mean(programming_sum, na.rm = TRUE),
+            median_programming_sum = median(programming_sum, na.rm = TRUE))
 
 ```
 
@@ -1124,7 +1163,7 @@ Hard to put much into this negative relationship with the outliers.
 ```{r}
 nash_venue_data %>%
   filter(music_space == "Music Space") %>%
-  mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
+  mutate(programming_sum = experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   mutate(value_sqft = TotlAppr/Area_sqft) %>%
   filter(value_sqft < 750) %>%
