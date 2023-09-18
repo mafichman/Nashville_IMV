@@ -24,7 +24,6 @@ Week of 9/13
 
 - Write a methodology and data sources sections - 2 and 3 (Sofia)
 - Annotate maps and charts, to contain proper titles, axis titles, and styling (Sofia)
-- Please double check the census data for Nashville (Sofia)
 - Write top takeaways (Michael) - DONE PENDING NEW DATA - NEED TO ADD SECTION NUMBER REFERENCES
 - Fix some venue data points - before re-running with licenses (Michael):
 
@@ -48,6 +47,7 @@ Recently finished:
 - Analyze recent sales values and impart risk scores (Michael) - DONE
 - Do some comparisons with CFP database (Michael) - DONE
 - k-means clustering (Michael)
+- Please double check the census data for Nashville (Sofia) - DONE - Michael 9/18
 
 
 ```{r setup, include=FALSE}
@@ -141,7 +141,7 @@ source("~/GitHub/CFP/unified__city_data/epsg_list.R")
 # LOAD IN THE NASH DATA
 
 # Read in district aggregates
-d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v5.geojson") %>%
+d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v6.geojson") %>%
   st_as_sf(crs = 4326) %>%
   rename(venue_count = num_venues,
          d1_name = Communit_1)
@@ -950,6 +950,10 @@ main_venue_data %>%
 
 ```
 ### 4.7.2. Venue Density by City
+
+THERE IS SOMETHING WRONG WITH THE TOTAL POPULATION NUMBER HERE FOR NASHVILLE
+
+Sydney's population represents only 2 of the 33 Local Government Areas in the metro region - City of Sydney and Inner West Council.
 
 ```{r}
 d1_aggregates %>%
