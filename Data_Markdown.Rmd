@@ -373,7 +373,7 @@ business_licenses = read.csv("~/Github/Nashville_IMV/data/metro/Business_Propert
 
 venue_all_business_data = left_join(venue_admin_key_table,business_licenses,by="APN")
 
-variables_business = c("name","BUSNAME","address_admin","PropAddr","APN","BUSTYPE","OWNER","APPRVALUE","ASSDVALUE")
+variables_business = c("name","BUSNAME","address_admin","PropAddr","APN","ACCOUNT","BUSTYPE","OWNER","APPRVALUE","ASSDVALUE")
 
 venue_select_business_data = select(venue_all_business_data,all_of(variables_business))
 ```
@@ -387,3 +387,15 @@ st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggr
 st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v4.geojson")
 
 ```
+
+#business license stuff
+```{r}
+manual_business_match = read.csv("C:/Users/sofia/Documents/UPenn/Nashville/manual_business_license.csv")
+#1321 to 469 but still need to get to 279
+#hotel - hotel or restaurant
+# some confusing
+# live manager
+# some have nothing
+# there are duplicates
+```
+
