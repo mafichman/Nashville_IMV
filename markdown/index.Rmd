@@ -247,11 +247,9 @@ Data governance and procedures related to live music, and government land and li
 
 - Capacities - need this from fire.
 
-- Zoning, Land Use and Business Licensing data and classifications do not capture the location or nature of live music activity in Nashville, making it extremely difficult to monitor the activity in the sector or direct aid or funding to it. Only 3 (THREE) businesses that were identified as primarily Music Spaces were listed with a primary business type of Performance Space. Most are listed as Drinking or Food estabilishments.
+- Zoning, Land Use and Business Licensing data and classifications do not capture the location or nature of live music activity in Nashville, making it extremely difficult to monitor the activity in the sector or direct aid or funding to it. Only 3 (THREE) businesses that were identified as primarily Music Spaces were listed with a primary business type of Performance Space. Most are listed as Drinking or Food estabilishments. Only 18.5% of music spaces and occasional music spaces have are identified in administrative records as having events, music, theater or nightclub use.
 
 - Data governance related to these sets is far below national standards - in terms of open data availability, inter-operatiblity of government record systems and data teams, and in terms of the meaningful administrative indicators related to live music. There is no ability to understand live music through licensing, business, or land records.
-
-- Only 18.5% of music spaces and occasional music spaces have are identified in administrative records as having events, music, theater or nightclub use.
 
 ## 1.5. Multi-City Comparison with CFP Database
 
@@ -282,6 +280,8 @@ TBD
 - Nashville Metro Fire Inspection Data
 
 - Nashville Planning Districts
+
+- Business license data
 
 # 3. Methods
 
@@ -1617,6 +1617,8 @@ nash_venue_data %>%
 How many are actually categorized as "Nightclub" LU and/or Music / event business?
 
 Just 47 - this is about 18.5%
+
+11 of these are IMVs - almost half
 
 ```{r}
 nash_venue_data %>%
