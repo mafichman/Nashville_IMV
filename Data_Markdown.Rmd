@@ -260,6 +260,15 @@ venue_full = left_join(venue_select_parcel_data, venues_dist %>%
 #area is of parcel not building so I will not calculate price/sqft just yet
 #will get centroids from venues table rather than re-calculating
 ```
+```{r}
+# Save an object that's just venue info and polygons
+
+venue_polygons <- venue_full %>%
+  st_as_sf() %>%
+  select(name, address_admin, APN)
+
+```
+
 ## Zoning data
 
 The zoning data have a lot of busted vertices - 19 features with invalid spherical geometry
@@ -367,15 +376,58 @@ venue_full <- left_join(venue_full, conditions %>%
   slice(1) %>%
   ungroup()
 ```
+
+
 ## Business Licenses Dataset cleaning
-```{r eval = FALSE}
+
+
+```{r}
+#Whole database
+
 business_licenses = read.csv("~/Github/Nashville_IMV/data/metro/Business_Property.csv")
 
-venue_all_business_data = left_join(venue_admin_key_table,business_licenses,by="APN")
+# Sofia cleaned database
 
-variables_business = c("name","BUSNAME","address_admin","PropAddr","APN","ACCOUNT","BUSTYPE","OWNER","APPRVALUE","ASSDVALUE")
+manual_business_match = read.csv("~/Github/Nashville_IMV/data/metro/manual_business_license.csv")
+#1321 to 469 but still need to get to 279
+#hotel - hotel or restaurant
+# some confusing
+# live manager
+# some have nothing
+# there are duplicates
 
-venue_select_business_data = select(venue_all_business_data,all_of(variables_business))
+ 
+```
+
+```{r}
+venue_full <- left_join(venue_full, manual_business_match %>%
+                         as.data.frame() %>% 
+                    select(-X) %>%
+                    rename(BIZ_OWNER = OWNER,
+                           BIZ_ACCOUNT = ACCOUNT,
+                           BIZ_APPRVALUE = APPRVALUE,
+                           BIZ_ASSD_VALUE = ASSDVALUE) %>%
+                         mutate(APN = str_pad(APN, width = 11, side = "left", pad = "0")),
+                  by = c("address_admin", "APN", "name")) %>%
+  group_by(name) %>%
+  slice(1)
+
+
+```
+
+## Clean venue data before writing out
+
+```{r}
+venue_full <- venue_full %>%
+  select(-genre, -matches("venueType")) %>%
+  mutate(x=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+         y=map_dbl(geometry, ~st_centroid(.x)[[2]])) %>%
+  as.data.frame() %>%
+  select(-geometry) %>%
+  left_join(venue_polygons, ., 
+            by = c("address_admin", "APN", "name"))
+
+
 ```
 
 ## Write out the data
@@ -384,18 +436,11 @@ venue_select_business_data = select(venue_all_business_data,all_of(variables_bus
 
 st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v6.geojson")
 
-st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v4.geojson")
+st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v5.geojson")
 
 ```
 
-#business license stuff
-```{r}
-manual_business_match = read.csv("C:/Users/sofia/Documents/UPenn/Nashville/manual_business_license.csv")
-#1321 to 469 but still need to get to 279
-#hotel - hotel or restaurant
-# some confusing
-# live manager
-# some have nothing
-# there are duplicates
+
+
 ```
 
