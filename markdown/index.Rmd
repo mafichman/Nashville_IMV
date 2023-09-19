@@ -18,24 +18,27 @@ NOTES AND TO-DO's:
 
 Week of 9/6
 
-- Associate license data with venues in a separate script (Sofia) - URGENT
+- Associate license data with venues in a separate script (Sofia) - by 9/15
 
 Week of 9/13
 
-- Write a methodology section (Sofia) - Week of 9/13-20
-- Annotate maps and charts, put proper text and styling (Sofia) - Week of 9/13-20
-- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes - this will be done as needed during the writing process (Sofia) - Week of 9/13-20
-- Write top takeaways (Michael)
+- Write a methodology and data sources sections - 2 and 3 (Sofia)
+- Annotate maps and charts, to contain proper titles, axis titles, and styling (Sofia)
+- Write top takeaways (Michael) - DONE PENDING NEW DATA - NEED TO ADD SECTION NUMBER REFERENCES
+- Fix some venue data points - before re-running with licenses (Michael):
 
+Nissan Stadium events/month, 3rd and Lindsley independence
 
 Week of 9/20
 
-- Create graphics for each venue zoom in - see end of document
+- Create graphics for each venue zoom in - see end of document - sect 9
+- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes (Sofia) - Sect. 8.1.
 
 
 Unknown timeframe
 
 - Add capacity data and re-run data_markdown with "venue ladder" and cfp comparison (TBD - ??)
+- Render graphics for document
 
 
 Recently finished:
@@ -43,6 +46,8 @@ Recently finished:
 - Add property condition, year built, building use and other data in the data_markdown (Michael) DONE
 - Analyze recent sales values and impart risk scores (Michael) - DONE
 - Do some comparisons with CFP database (Michael) - DONE
+- k-means clustering (Michael)
+- Please double check the census data for Nashville (Sofia) - DONE - Michael 9/18
 
 
 ```{r setup, include=FALSE}
@@ -136,7 +141,7 @@ source("~/GitHub/CFP/unified__city_data/epsg_list.R")
 # LOAD IN THE NASH DATA
 
 # Read in district aggregates
-d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v5.geojson") %>%
+d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v6.geojson") %>%
   st_as_sf(crs = 4326) %>%
   rename(venue_count = num_venues,
          d1_name = Communit_1)
@@ -197,43 +202,60 @@ calculate_share <- function(dat, col, facetCol = "") {
 
 # 1. Key Takeaways
 
+Nashville is a globally significant live music cluster, comparable in scale to major international cities. It is, however, not characterized by an experimental or community-oriented programming approach. Nashville's IMVs are regarded by local music experts and community members as more likely to present experimental and local programming with a focus on the promotion of music and artists. IMVs are less likely to locate near the Downtown center of the cluster, and they are paying less, on average, for rent. This is consistent with observed patterns in Nashville and elsewhere where venues trade off investments in programming against rents. It also suggests that they are more risk-averse and vulnerable. Venues that regarded as likely to have operational relationships with corporate partners are willing to pay more in rent and tolerate more risk.
+
 ## 1.1. Venue database characteristics
 
 - Researchers, community members, and focus group experts identified 253 spaces used for music in Nashville on a periodic or regular basis (Section 4). 114 of these were identified as being "Music Spaces", where music is likely to be the primary offer, and events are held more than once per week. The remainder (139) were considered "Occasional Music Spaces" (Section 4.1.2)
 
-- 23 of these Music Spaces (and 14 Occasional Music Spaces) were identified by researchers, community members, and focus group experts as likely to be IMVs. 50 Music Spaces were identified as being "Quasi-Independent" because some of their functions were assessed as likely to be contracted to corporate outside entities or they had legal ownership affiliations to other businesses. 41 Music Spaces were assessed as likely to be completely non-independent. 
+- 23 of these Music Spaces (and 14 Occasional Music Spaces) were identified by researchers, community members, and focus group experts as likely to be IMVs (Completely independent ownership and operations). 50 Music Spaces were identified as being "Quasi-Independent" because some of their functions were assessed as likely to be contracted to corporate outside entities or they had legal ownership affiliations to other businesses. 41 Music Spaces were assessed as likely to be completely non-independent. 
 
 ## 1.2. Community programming assessment
 
-- IMVs are doing more experimental programming
+- Community members and focus group experts assessed the likelihood of different types of program characteristics as a way to understand how locally or artistically focused the venue's cultural offer was likely to be. Although this is an obviously subjective exercise, it allows a broad understanding of how Nashvillians understand the nature of programming in the city's venues.
 
-- IMVs are more community-focused on average
+- IMVs were, on average, more likely to present experimental programming than Quasi-Independent or Non-Independent music spaces. However, amongst all venue classifications, experimental programming was seen as generally unlikely to be presented in Nashville venues. Compared to VibeLab/Praxis' Creative Footprint venue survey (which collects the same metric), Nashville venues were, on average ranked lowest for experimental likelihood amongst all 7 cities.
 
-- IMVs are more likely to promote lineups and artists in their marketing
+- IMVs are, on average, more likely to present community-focused programming than Quasi-Independent or Non-Independent music spaces.
 
-- IMVS are less likely to use their space for non-music programs and uses
+- IMVs are, on average, more likely to promote lineups and artists in their marketing than Quasi-Independent or Non-Independent music spaces.
+
+- Non-Independent venues were assessed to be dramatically more likely to put on non-music programming - including talks, films, panel discussions or other types of entertainment-driven, non-music uses. IMVs and Quasi-IMVs seem to be more likely to focus on music as a singular program type.
 
 ## 1.3. Economic Geography
 
-- Spaces with lower land values are investing more in community-oriented and experimental programming (IMV or not)
+- Music spaces make strong locational choices based on a range of factors - including access to transportation and customers, but also based on land costs that allow for risk-taking in programming - local content, experimental content, and a music-focused program.
 
-- Concentration by districts, programming by districts, co-location with young adults (by district)
+- Nashville music spaces, like those observed elsewhere by CFP, are trading off programming investments and rents. - Regardless of type - music spaces with lower appraised value are observed to be more likely to present community-oriented and experimental programming (IMV or not).
 
-- The core of Nashville's live music cluster is dominated by non-IMVs. IMVs on average, locate further away from the center of the cluster. This is the area most frequented by tourists and best served by regional transportation.
+- Venues are also trading off independence against financial risk. IMVs are located in areas with dramatically lower land values than Quasi-IMVs and non-IMVs, on average. It's not clear the degree to which this might have been different before major closures in 2019-22 - but some notable former IMVs with high real estate risk moved into the Quasi and non-IMV categories. IMVs, by location, are exposed to lower localized sales volumes, lower ratio of venue land value to nearby venue land value) than non-IMV Music Spaces.
 
-- IMVs are in spaces valued at far less per sqft than non-IMVs. 
+- The geographic center of gravity of Nashville's live music cluster is Downtown. It is an incredibly dense cluster, with 52 music spaces and 55 occasional music spaces. However, IMVs tend to be located, on average, further from this centroid. Less than 10% of these music spaces are IMVs. IMVs are most concentrated in East Nashville, South Nashville. The downtown planning area has the highest percentage change in population density and rents amongst any Metro planning area from 2010-2020 - suggesting that the attractiveness of Downtown is increasing, and that conflicts with residents are inevitable. This is the area most frequented by tourists and best served by regional transportation. But the policy focus on the central cluster, by default, excludes IMVs.
+
+-  On average, venues in South, North, East and West Nashville were assessed by local focus groups and community members as having higher likelihood of experimental, community focused program than Downtown.
+
 
 ## 1.4. Land Use, Regulation and Building Characteristics
 
-- Zoning - what are the types we are seeing
+- Live music is played in an extraordinary variety of contexts in Nashville - in concert halls and auditoriums, but also in strip malls, restaurants, and stores, mixed use complexes with apartments or offices, hotels and even on docks and marinas. Most of the time, when music is being played, it's on land that is primarily being designated for use as something else. IMVs and Quasi-IMVs are more likely to be in bar/nightclub, restaurant or retail contexts, whereas Non-Independents span a very wide variety of uses, including large format industrial reuse and institutional spaces.
 
-- Building quality
+- Building quality - building stock was generally listed as being "Average" with a small few exceptions
+
+- Zoning - what are the types we are seeing SOPHIA CAN YOU CHECK ON THE ZONING DESCRIPTIONS?
 
 - Capacities
 
+- Licensing - what kind of licenses
+
 ## 1.5. Multi-City Comparison with CFP Database
 
-- Amongst CFP cities - Nashville has a profile most similar to that of Stockholm - relatively low scores on experimentation, community program - but it was ranked comparatively well on the fact that venues promote music as a core offer. This comparison is based on all of the music spaces collected in in the community process, not just the regular music spaces (other CFP city databases also consist of spaces that host music a minimum of once per month)
+- Nashville has a higher per capita number of spaces where music is being presented (either occasionally or as a primary function) than was observed during CFP studies of New York (2018), Berlin (2017), Tokyo (2019), Stockholm (2021) or Montreal (2022). Of CFP cities, only Sydney had higher density - albeit in a study confined to a small portion of the metro area (2023).
+
+- Downtown Nashville is one of the highest density clusters of venues - comparable in size to centreal Berlin districts and Tokyo's Shibuya. East Nashville is also a globally significant cluster - with a number of venues rivaling that of major areas of nightlife.
+
+- Amongst CFP cities - Nashville has a program profile most similar to that of Stockholm - relatively low scores on experimentation, community program - but it was ranked comparatively well on the fact that venues promote music as a core offer. This comparison is based on all of the music spaces collected in in the community process, not just the regular music spaces (other CFP city databases also consist of spaces that host music a minimum of once per month)
+
+- Nashville is similar to Montreal and Sydney in that it is automobile oriented - with demographic indicators less heavily driven by bid-rent functions and agglomeration effects associated with fixed transportation.
 
 ## 1.7. US Census Analysis
 
@@ -259,15 +281,13 @@ TBD
 
 What did we do?
 
-We collected the data set with liaisons, community members and desk research (this will be covered by VL in the report)
+We collected the data set with liaisons, community members and desk research
 
 We related each venue to it's APN number (a property identifier) and joined it to tax records, license records.
 
-We created variables for knn sq ft costs, dist to CBD centroid, joined venues to districts
+We created variables for sq ft costs, dist to CBD centroid, joined venues to districts and summarized programming variables.
 
 # 4. Venue Database
-
-Let's give descriptive statistics for the venue database
 
 Searchable database
 
@@ -752,21 +772,6 @@ ggplot(nash_venue_data)+
 
 ### 4.6.3. Interdisciplinarity
 
-```{r}
-
-ggplot(nash_venue_data )+
-  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
-  labs(
-    title = "Interdisciplinarity",
-    subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
-    x="",
-    y="Total Venues",
-    caption = "Data: PennPraxis")+
-  facet_wrap(~music_space)+
-  plotTheme
-
-```
 
 ```{r}
 ggplot(nash_venue_data %>%
@@ -774,7 +779,7 @@ ggplot(nash_venue_data %>%
   geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
   #scale_fill_viridis_d()+
   labs(
-    title = "Interdisciplinarity",
+    title = "Interdisciplinarity - Music Spaces",
     subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
     x="",
     y="Total Venues",
@@ -935,6 +940,82 @@ nash_venue_data %>%
 
 ## 4.7. CFP Comparisons
 
+### 4.7.1. Venue Count
+
+```{r}
+main_venue_data %>%
+  group_by(city) %>%
+  tally() %>%
+  filter(city != "") %>%
+  rbind(., nash_venue_data %>%
+          mutate(city = "Nashville") %>%
+          group_by(city) %>%
+          tally) %>%
+  kable() %>%
+  kable_styling()
+
+```
+### 4.7.2. Venue Density by City and Area
+
+Note - Sydney's population represents only 2 of the 33 Local Government Areas in the metro region - City of Sydney and Inner West Council.
+
+```{r}
+d1_aggregates %>%
+  as.data.frame() %>%
+  filter(city != "Sydney") %>%
+  group_by(city) %>%
+  summarize(total_pop = sum(pop_t2),
+            total_venues = sum(venue_count, na.rm = TRUE),
+            area_sqkm = sum(area_km2)) %>%
+  rbind(.,
+        d2_aggregates %>%
+  as.data.frame() %>%
+  filter(city == "Sydney") %>%
+  group_by(city) %>%
+  summarize(total_pop = sum(pop_t2),
+            total_venues = sum(venue_count, na.rm = TRUE),
+            area_sqkm = sum(area_km2))) %>%
+  rbind(., d1_aggregates_nash %>%
+          st_transform(2274) %>%
+          mutate(city = "Nashville") %>%
+          mutate(area_sqkm = st_area(.)* 0.0000000929) %>%
+          as.data.frame() %>%
+          summarize(total_pop = sum(tot_pop20),
+                    total_venues = sum(venue_count, na.rm = TRUE),
+                    area_sqkm = sum(area_sqkm)) %>%
+          mutate(city = "Nashville")) %>%
+  mutate(total_venues = ifelse(city == "Nashville", 253, total_venues)) %>%
+  mutate(venues_per_10k = total_venues / (total_pop/10000),
+         venue_sqkm = total_venues / area_sqkm)
+  
+
+```
+
+```{r}
+d1_aggregates %>%
+  as.data.frame() %>%
+  filter(city != "Sydney" & 
+           city != "New York") %>%
+  select(city, d1_name, venue_count) %>%
+  rbind(.,
+        d2_aggregates %>%
+  as.data.frame() %>%
+  filter(city %in% c("Sydney", "New York")) %>%
+  select(city, venue_count, d2_name) %>%
+    rename(d1_name = d2_name)) %>%
+  rbind(., d1_aggregates_nash %>%
+          as.data.frame() %>%
+          select(venue_count, d1_name) %>%
+          mutate(city = "Nashville")) %>%
+  arrange(-venue_count) %>%
+  kable() %>%
+  kable_styling()
+  
+
+```
+
+### 4.7.3. Programming Comparison
+
 ```{r}
 main_venue_data %>%
   select(city, promotion, community_focus, experimentation) %>%
@@ -1046,7 +1127,7 @@ nash_venue_data %>%
 
 ```
 
-Seems like IMVs and non-IMVs program similarly in practice vis-a-vis these measures... ON AVERAGE
+Seems like IMVs and non-IMVs program similarly in practice vis-a-vis these measures (excluding interdisciplinarity)... ON AVERAGE
 
 What about the exceptional examples??
 
@@ -1055,24 +1136,37 @@ No - it's basically the same!
 ```{r}
 nash_venue_data %>%
   filter(music_space == "Music Space") %>%
-  mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
+  mutate(programming_sum = experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   ggplot()+
-  geom_histogram(aes(programming_sum), binwidth = 1)+
+  geom_histogram(aes(programming_sum), binwidth = 2)+
   facet_wrap(~IMV)+
   plotTheme
 
 ```
 
-MF - what are these indies with the super high sq footage values?
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  mutate(programming_sum = experimentation_ord +
+           community_focus_ord + event_promotion_ord) %>%
+  group_by(IMV) %>%
+  summarize(mean_programming_sum = mean(programming_sum, na.rm = TRUE),
+            median_programming_sum = median(programming_sum, na.rm = TRUE))
+
+```
+
+MF - what are these indies with the super high sq footage values? These are in big mixed use buildings I believe.
+
+Hard to put much into this negative relationship with the outliers.
 
 ```{r}
 nash_venue_data %>%
   filter(music_space == "Music Space") %>%
-  mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
+  mutate(programming_sum = experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   mutate(value_sqft = TotlAppr/Area_sqft) %>%
-  filter(value_sqft < 1000) %>%
+  filter(value_sqft < 750) %>%
   ggplot()+
   geom_point(aes(y = programming_sum, x = value_sqft, color = IMV))+
   geom_smooth(aes(y = programming_sum, x = value_sqft), method = "lm", se = FALSE)+
@@ -1087,7 +1181,7 @@ nash_venue_data %>%
   mutate(programming_sum = interdisciplinarity_ord + experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   mutate(value_sqft = TotlAppr/Area_sqft) %>%
-  filter(value_sqft < 1000) %>%
+  filter(value_sqft < 750) %>%
   ggplot()+
   geom_point(aes(y = programming_sum, x = value_sqft))+
   geom_smooth(aes(y = programming_sum, x = value_sqft), method = "lm", se = FALSE)+
@@ -1096,18 +1190,54 @@ nash_venue_data %>%
 
 ```
 
-## 5.2. Zoning and Land Use
+## 5.2. Zoning
 
+These are the most coming zoning designations
+
+SOPHIA - can you look up the top 10 of these and see what they actually mean in the code?
 
 ```{r}
 nash_venue_data %>%
   group_by(ZONE_DESC) %>%
   tally() %>%
-  arrange(-n)
+  arrange(-n) %>%
+  kable() %>%
+  kable_styling()
 
 ```
 
-## 5.3. Building Age
+## 5.3. Land Use
+
+```{r}
+nash_venue_data %>%
+  group_by(LUDesc) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable() %>%
+  kable_styling()
+
+```
+
+```{r}
+ggplot(nash_venue_data)+
+  geom_bar(aes(LUDesc))+
+  facet_wrap(~music_space)+
+  coord_flip()+
+  plotTheme
+
+```
+
+```{r}
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
+  geom_bar(aes(LUDesc))+
+  facet_wrap(~IMV)+
+  coord_flip()+
+  plotTheme
+
+```
+
+## 5.4. Building Age
 
 ```{r}
 nash_venue_data %>%
@@ -1120,11 +1250,11 @@ nash_venue_data %>%
 
 ```
 
-## 5.4. Building Condition
+## 5.5. Building Condition
 
 
 
-## 5.5.  Venues by planning area / neighborhood
+## 5.6.  Venues by planning area / neighborhood
 
 All music spaces
 
@@ -1287,7 +1417,39 @@ ggplot(data = d1_aggregates_nash %>%
 
 ```
 
-## 5.6. Venues, Programming and Centrality
+Venues and Urban Variables by District -
+
+This is not particularly useful compared to the point pattern analysis.
+
+```{r}
+d1_aggregates_nash %>%
+  as.data.frame() %>%
+  select(d1_name, density_venues, IMV_n, avg_med_rent20, avg_dens20, perc_chg_dens, perc_chg_med_rent) %>%
+  gather(-d1_name, -density_venues, key = "variable", value = "value") %>%
+  ggplot()+
+  geom_point(aes(x = value, y = density_venues)) +
+  facet_wrap(~variable, scales = "free")+
+  plotTheme
+
+```
+
+```{r}
+d1_aggregates_nash %>%
+  as.data.frame() %>%
+  select(d1_name, interdisciplinarity, event_promotion, community_focus, experimentation, avg_med_rent20, avg_dens20, perc_chg_dens, perc_chg_med_rent) %>%
+  gather(-d1_name, -interdisciplinarity, -event_promotion, -community_focus, -experimentation, key = "variable", value = "value") %>%
+  ggplot()+
+  geom_point(aes(x = value, y = experimentation)) +
+  geom_line(stat = "smooth", method='lm', 
+            aes(y = experimentation, x = value), 
+            se = FALSE, 
+            linetype = "dashed", alpha = 0.5)+
+  facet_wrap(~variable, scales = "free")+
+  plotTheme
+
+```
+
+## 5.7. Venues, Programming and Centrality
 
 What is the geometric center of venue activity in Nashville?
 
@@ -1339,7 +1501,77 @@ nash_venue_data %>%
   plotTheme
 
 ```
+## 5.7. Venues and Geographic Clustering
 
+k-means clustering analysis
+
+This first test is a "k-means" cluster analysis that is strictly looking for geographic clusters - this analysis functions by [partitioning a cloud of points in multi-dimensional data to find cluster centroids, and assign each point to a cluster by minimizing within cluster variance](https://en.wikipedia.org/wiki/K-means_clustering).
+
+This is ONLY for music spaces.
+
+This doesn't really produce anything that's much different than the planning areas.
+
+```{r elbow}
+set.seed(123)
+
+library(cluster)
+library(factoextra)
+
+# function to compute total within-cluster sum of square 
+wss <- function(k) {
+  kmeans(nash_venue_data %>% 
+           filter(music_space == "Music Space", 
+                  is.na(y) == FALSE) %>% 
+           select(x, y), k, nstart = 10 )$tot.withinss
+}
+
+# Compute and plot wss for k = 1 to k = 15
+k.values <- 1:15
+
+# extract wss for 2-15 clusters
+wss_values <- map_dbl(k.values, wss)
+
+# Run "elbow plot" to determine optimal cluster number.
+plot(k.values, wss_values,
+       type="b", pch = 19, frame = FALSE, 
+       xlab="Number of clusters K",
+       ylab="Total within-clusters sum of squares")
+
+# Create a data object with cluster numbers
+test <- kmeans(nash_venue_data %>% 
+           filter(music_space == "Music Space", 
+                  is.na(y) == FALSE) %>% 
+            select(x, y), centers = 7, nstart = 25)
+```
+
+This interactive map shows the location of these clusters:
+
+```{r leaflet_2}
+cluster_data1 <-nash_venue_data %>% 
+           filter(music_space == "Music Space", 
+                  is.na(y) == FALSE)  %>% 
+  cbind(test$cluster) %>% 
+  rename(cluster = 'test$cluster')
+
+pal <- colorNumeric(c("red", "blue", "green", "orange", "black", "purple",
+                     "yellow", "pink"), 1:8)
+
+l2 <- leaflet() %>% 
+  addProviderTiles(providers$Esri.WorldTopoMap) %>%
+  setView(lng = mean(cluster_data1$x, na.rm = TRUE),
+          lat = mean(cluster_data1$y, na.rm = TRUE),
+          zoom = 11) %>%
+  addScaleBar(position = "topleft") %>%
+  addCircleMarkers(data= cluster_data1,
+                   lng=~x, 
+                   lat=~y,
+                   radius =~ 1, 
+                   fillOpacity =~ 1,
+                   color = ~pal(cluster),
+                   label=~paste(name, address_admin, " | Cluster: ", cluster))
+
+l2
+```
 
 # 6. Venues and Regulation
 
@@ -1462,12 +1694,31 @@ nash_venue_data %>%
   filter(value_sqft < 1000) %>%
   filter(music_space == "Music Space") %>%
   ggplot()+
-  geom_point(aes(x = value_sqft, medianAppraisal))+
+  geom_point(aes(y = value_sqft, x = medianAppraisal))+
   geom_abline(slope = 1)+
   facet_wrap(~IMV)+
   plotTheme
 
 ```
+
+What are the most exposed venues as far as ratio of median appraisal to their appraisal?
+
+```{r}
+nash_venue_data %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  st_as_sf(coords = c("x", "y"), 
+                              crs = 4269) %>%
+                     st_transform(4326) %>%
+  st_join(., fishnet_parcels) %>%
+  as.data.frame() %>%
+  filter(music_space == "Music Space") %>%
+  mutate(appraisal_ratio = medianAppraisal/value_sqft) %>%
+  select(name, appraisal_ratio, value_sqft, address_admin, medianAppraisal, TotlAppr, LUDesc, IMV) %>%
+  arrange(-appraisal_ratio) %>%
+  kable() %>%
+  kable_styling()
+```
+
 
 ## 8.2.2. Risk indicators
 
@@ -1478,7 +1729,6 @@ Formula:
 Risk = sum of:
 
 Quartile Value (amongst music spaces) of:
--Appraised Sqft Value
 -Median value of appraisals in sales since 2021 w/in half mile
 -Number of sales since 2021 w/in half mile
 -Parcel appraised value as a pct of sqft value of sales w/in half mile
@@ -1487,7 +1737,7 @@ Plus:
 -Physical condition (1 if average, 2 if fair, 4 if poor or very poor)
 Community ranked Programming investment (e.g. experimentation, community focus 1 - 4)
 
-WOULD LIKE TO ADD CAPACITY TO THIS
+WOULD LIKE TO ADD CAPACITY TO THIS - ALSO ADD COMMUNITY ID'd THREATS
 
 ```{r}
 risk_matrix <- nash_venue_data %>%
@@ -1499,8 +1749,8 @@ risk_matrix <- nash_venue_data %>%
   st_join(., fishnet_parcels) %>%
   mutate(appraisal_ratio = 100*(medianAppraisal/value_sqft)) %>%
   as.data.frame() %>%
-  select(value_sqft, appraisal_ratio, experimentation_ord, community_focus_ord,
-         name, address_admin, n_sales, medianAppraisal)%>%
+  select(appraisal_ratio, experimentation_ord, community_focus_ord,
+         name, address_admin, n_sales, medianAppraisal, value_sqft)%>%
   gather(-name, -address_admin, key = "variable", value = "value") %>%
   group_by(variable) %>%
   summarize(quantile = scales::percent(c(0.25, 0.5, 0.75)), 
@@ -1517,8 +1767,8 @@ risk_matrix <- nash_venue_data %>%
   mutate(programming_sum = experimentation_ord +
            community_focus_ord + event_promotion_ord) %>%
   as.data.frame() %>%
-   select(value_sqft, appraisal_ratio, experimentation_ord, community_focus_ord,
-         name, address_admin, n_sales, medianAppraisal)%>%
+   select(appraisal_ratio, experimentation_ord, community_focus_ord,
+         name, address_admin, n_sales, medianAppraisal, value_sqft)%>%
   gather(-name, -address_admin, key = "variable", value = "value"))%>% 
   mutate(quantile = case_when(value >= `75%` ~ 4,
                               value <= `25%` ~ 1,
@@ -1530,14 +1780,51 @@ risk_matrix <- nash_venue_data %>%
   pivot_wider(names_from = variable, values_from = quantile) %>%
   left_join(., nash_venue_data %>%
               filter(music_space == "Music Space") %>%
-              select(IMV, name, address_admin, APN, music_space, Condition)) %>%
+              select(IMV, name, address_admin, APN, music_space, Condition, 
+                     threats_neighbors, threats_cost, threats_licensing)) %>%
   mutate(Condition_ord = case_when(str_detect(Condition, "Poor") == TRUE ~ 4,
                                    str_detect(Condition, "Fair") == TRUE ~ 2,
                                    str_detect(Condition, "Average") == TRUE ~ 1,
                                    is.na(Condition) == TRUE ~ 1)) %>%
-  mutate(cumulative_risk = sum(appraisal_ratio + value_sqft+ Condition_ord +
-                                 experimentation_ord + community_focus_ord+ 
+  mutate(community_threat_assessment = case_when(threats_neighbors + threats_cost + threats_licensing > 1  ~ 4,
+                                                 threats_neighbors + threats_cost + threats_licensing == 1  ~ 3,
+                                                 threats_neighbors + threats_cost + threats_licensing < 1  ~ 0)) %>%
+  mutate(cumulative_risk = sum(appraisal_ratio + Condition_ord + community_threat_assessment +
+                                 experimentation_ord + community_focus_ord + value_sqft +
                                  medianAppraisal + n_sales, na.rm = TRUE))
+
+```
+
+```{r}
+ggplot(risk_matrix)+
+  geom_histogram(aes(cumulative_risk), binwidth = 2)+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+```{r}
+risk_matrix %>%
+  group_by(IMV) %>%
+  summarize(mean_risk = mean(cumulative_risk, na.rm = TRUE),
+            mean_appraisal_ratio = mean(appraisal_ratio, na.rm = TRUE),
+            mean_n_sales = mean(n_sales, na.rm = TRUE),
+            meanappraisal = mean(medianAppraisal, na.rm = TRUE))
+```
+
+```{r}
+  ggplot()+
+  geom_sf(data = d1_aggregates_nash, fill = "transparent")+
+  geom_point(data = risk_matrix %>%
+  left_join(., nash_venue_data %>%
+              select(x, y, name, address_admin)) %>%
+              mutate(risk_level = case_when(cumulative_risk > 15 ~ "Highest Risk",
+                                            cumulative_risk < 15 & cumulative_risk > 10 ~ "Average Risk",
+                                            cumulative_risk < 11 ~ "Lowest Risk")) %>%
+    filter(is.na(risk_level) == FALSE),
+  aes(x = x, y = y), alpha = 0.5, color = "red")+
+  facet_grid(risk_level~IMV)+
+  mapTheme
 
 ```
 
@@ -1550,6 +1837,8 @@ risk_matrix <- nash_venue_data %>%
 - Venue profile accompaniments (shows parcel and neighborhood context)
 
 Here is an example - make a ggbasemap with a specific buffer area around the parcel (identified in the code by APN) and then just map the parcel.
+
+## 9.1. 3rd and Lindsley
 
 ```{r}
 base_map_3rd_and_lindsley <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(nash_venue_data %>%
@@ -1593,6 +1882,49 @@ ggmap(base_map_3rd_and_lindsley) +
   mapTheme
 ```
 
+## 9.2. Eastside Bowl
+
+```{r}
+base_map_eastside_bowl <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(nash_venue_data %>%
+                                                                                filter(name == "Eastside Bowl") %>%
+                                                                                  st_as_sf(coords = c("x", "y"), crs = 4269) %>% st_transform(4326)),
+                                                                  300)))),
+                    force = TRUE, maptype = "toner-lite", zoom = 17)
+```
+
+```{r}
+ggmap(base_map_eastside_bowl) +
+ geom_sf(data = ll(nash_venue_data %>%
+                     filter(name == "Eastside Bowl") %>%
+                     st_as_sf(coords = c("x", "y"), 
+                              crs = 4269) %>%
+                     st_transform(4326)),
+            inherit.aes = FALSE, 
+         color = "red",
+         size = 2)+
+  labs(
+    title = "Focus Venue - Eastside Bowl",
+    subtitle = "",
+    caption = "Data: PennPraxis, Metro Nashville")+
+  mapTheme
+```
+
+```{r}
+ggmap(base_map_eastside_bowl) +
+ geom_sf(data = ll(right_join(parcels,
+                             nash_venue_data %>%
+                     filter(name == "Eastside Bowl")) %>%
+                     st_transform(4326)),
+            inherit.aes = FALSE, 
+         color = "red",
+         fill = "red",
+         alpha = 0.4)+
+  labs(
+    title = "Focus Venue - 3rd and Lindsley",
+    subtitle = "",
+    caption = "Data: PennPraxis, Metro Nashville")+
+  mapTheme
+```
 - Broader context maps (e.g. whole city with venues and some basemap stuff?)
 
 - Area maps for any geographic focus (e.g. North Nashville)

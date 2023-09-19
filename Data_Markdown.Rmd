@@ -1,7 +1,7 @@
 ---
 title: "Nasville Music Venues Research"
-author: "Sofia Fasullo"
-date: "2023-03-21"
+author: "Sofia Fasullo & Michael Fichman"
+date: "2023-09-18"
 output: 
   html_document:
     theme: cosmo
@@ -137,24 +137,54 @@ census10[is.na(census10)] <- 0 #allow for calculations to be made
 
 ## calculate new columns (in this case, area, population density, and preparation to calculate average median income)
 census10$area10 = st_area(census10) # this is in sq meters
-census10 = census10 %>% mutate(pop_dens10 = total_pop_est/area10, med_incxpop = median_income_est*total_pop_est, perc_youth = round((pop_18_34_est/total_pop_est)*100,1), med_rentxpop = med_rent_est*total_pop_est)
+census10 = census10 %>% mutate(pop_dens10 = total_pop_est/area10, 
+                               med_incxpop = median_income_est*total_pop_est, 
+                               perc_youth = round((pop_18_34_est/total_pop_est)*100,1), 
+                               med_rentxpop = med_rent_est*total_pop_est)
 
 ## join blocks to council districts and aggregate block data by council districts
-plan10 = st_join(planning_districts,census10) %>% group_by(Communit_1) %>% summarize(tot_pop10 = sum(total_pop_est), avg_med_inc10 = (sum(med_incxpop)/tot_pop10), avg_dens10 = mean(pop_dens10), tot_youth10 = sum(pop_18_34_est), perc_youth_10 = mean(perc_youth), avg_med_rent10 = (sum(med_rentxpop)/tot_pop10), tot_rent_HH_10 = sum(rental_units_est))
+plan10 = st_join(planning_districts, census10 %>%
+                   st_centroid()) %>% 
+  group_by(Communit_1) %>%
+  summarize(tot_pop10 = sum(total_pop_est), 
+            avg_med_inc10 = (sum(med_incxpop)/tot_pop10), 
+            avg_dens10 = mean(pop_dens10), 
+            tot_youth10 = sum(pop_18_34_est), 
+            perc_youth_10 = mean(perc_youth), 
+            avg_med_rent10 = (sum(med_rentxpop)/tot_pop10), 
+            tot_rent_HH_10 = sum(rental_units_est))
 
 ## repeat process with 2020 data
 census20 = acs2020
 census20[is.na(census20)] <- 0
 census20$area20 = st_area(census20)
-census20 = census20 %>% mutate(pop_dens20 = total_pop_est/area20, med_incxpop = median_income_est*total_pop_est, perc_youth = round((pop_18_34_est/total_pop_est)*100,1), med_rentxpop = med_rent_est*total_pop_est)
-plan20 = st_join(planning_districts,census20) %>% group_by(Communit_1) %>% summarize(tot_pop20 = sum(total_pop_est), avg_med_inc20 = (sum(med_incxpop)/tot_pop20), avg_dens20 = mean(pop_dens20), tot_youth20 = sum(pop_18_34_est), perc_youth_20 = mean(perc_youth), avg_med_rent20 = (sum(med_rentxpop)/tot_pop20), tot_rent_HH_20 = sum(rental_units_est))
+census20 = census20 %>% 
+  mutate(pop_dens20 = total_pop_est/area20, 
+         med_incxpop = median_income_est*total_pop_est, 
+         perc_youth = round((pop_18_34_est/total_pop_est)*100,1), 
+         med_rentxpop = med_rent_est*total_pop_est)
+
+plan20 = st_join(planning_districts, census20 %>%
+                   st_centroid()) %>% 
+  group_by(Communit_1) %>% 
+  summarize(tot_pop20 = sum(total_pop_est), 
+            avg_med_inc20 = (sum(med_incxpop)/tot_pop20), 
+            avg_dens20 = mean(pop_dens20), 
+            tot_youth20 = sum(pop_18_34_est), 
+            perc_youth_20 = mean(perc_youth), 
+            avg_med_rent20 = (sum(med_rentxpop)/tot_pop20), 
+            tot_rent_HH_20 = sum(rental_units_est))
 
 ## create dataset with council districts containing aggregated census data from both years AND further calculated columns (percent change population, percent change average median income, percent change in population density)
 plan_dist = 
   left_join(st_drop_geometry(plan10), st_drop_geometry(plan20), by="Communit_1") %>%
   left_join(.,planning_districts,by="Communit_1") %>%
   st_as_sf() %>% 
-  mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1), perc_chg_med_rent = round(((avg_med_rent20-avg_med_rent10)/avg_med_rent10)*100,1), perc_chg_youth = round(((perc_youth_20-perc_youth_10)/perc_youth_10)*100,1))
+  mutate(perc_chg_pop = round(((tot_pop20-tot_pop10)/tot_pop10)*100,1), 
+         perc_chg_med_inc = round(((avg_med_inc20-avg_med_inc10)/avg_med_inc10)*100,1), 
+         perc_chg_dens = round(((avg_dens20-avg_dens10)/avg_dens10)*100,1), 
+         perc_chg_med_rent = round(((avg_med_rent20-avg_med_rent10)/avg_med_rent10)*100,1), 
+         perc_chg_youth = round(((perc_youth_20-perc_youth_10)/perc_youth_10)*100,1))
 ```
 
 
@@ -352,7 +382,7 @@ venue_select_business_data = select(venue_all_business_data,all_of(variables_bus
 
 ```{r}
 
-st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v5.geojson")
+st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v6.geojson")
 
 st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v4.geojson")
 
