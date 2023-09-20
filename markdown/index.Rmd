@@ -151,8 +151,8 @@ d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregat
   rename(d2_name = d2_name.x)
 
 
-# Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 7/18/2023
-nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v4.geojson") %>%
+# Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 9/19/2023
+nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v5.geojson") %>%
   st_transform(crs = 4326) %>%
   group_by(name) %>%
   slice(1) %>%
@@ -204,6 +204,8 @@ calculate_share <- function(dat, col, facetCol = "") {
 
 Nashville is a globally significant live music cluster, comparable in scale to major international cities. It is, however, not characterized by an experimental or community-oriented programming approach. Nashville's IMVs are regarded by local music experts and community members as more likely to present experimental and local programming with a focus on the promotion of music and artists. IMVs are less likely to locate near the Downtown center of the cluster, and they are paying less, on average, for rent. This is consistent with observed patterns in Nashville and elsewhere where venues trade off investments in programming against rents. It also suggests that they are more risk-averse and vulnerable. Venues that regarded as likely to have operational relationships with corporate partners are willing to pay more in rent and tolerate more risk.
 
+Data governance and procedures related to live music, and government land and licensing records more generally, are lacking. Open data portals do not publish common data sets. Licensing and land use classifications do not capture coherent administrative data about live music, and internal data governance is poor - meaning that meaningful records cannot be easily examined or related, and therefore cannot be understood in everyday decisionmaking.
+
 ## 1.1. Venue database characteristics
 
 - Researchers, community members, and focus group experts identified 253 spaces used for music in Nashville on a periodic or regular basis (Section 4). 114 of these were identified as being "Music Spaces", where music is likely to be the primary offer, and events are held more than once per week. The remainder (139) were considered "Occasional Music Spaces" (Section 4.1.2)
@@ -243,9 +245,11 @@ Nashville is a globally significant live music cluster, comparable in scale to m
 
 - Zoning - what are the types we are seeing SOPHIA CAN YOU CHECK ON THE ZONING DESCRIPTIONS?
 
-- Capacities
+- Capacities - need this from fire.
 
-- Licensing - what kind of licenses
+- Zoning, Land Use and Business Licensing data and classifications do not capture the location or nature of live music activity in Nashville, making it extremely difficult to monitor the activity in the sector or direct aid or funding to it. Only 3 (THREE) businesses that were identified as primarily Music Spaces were listed with a primary business type of Performance Space. Most are listed as Drinking or Food estabilishments. Only 18.5% of music spaces and occasional music spaces have are identified in administrative records as having events, music, theater or nightclub use.
+
+- Data governance related to these sets is far below national standards - in terms of open data availability, inter-operatiblity of government record systems and data teams, and in terms of the meaningful administrative indicators related to live music. There is no ability to understand live music through licensing, business, or land records.
 
 ## 1.5. Multi-City Comparison with CFP Database
 
@@ -276,6 +280,8 @@ TBD
 - Nashville Metro Fire Inspection Data
 
 - Nashville Planning Districts
+
+- Business license data
 
 # 3. Methods
 
@@ -1190,54 +1196,8 @@ nash_venue_data %>%
 
 ```
 
-## 5.2. Zoning
 
-These are the most coming zoning designations
-
-SOPHIA - can you look up the top 10 of these and see what they actually mean in the code?
-
-```{r}
-nash_venue_data %>%
-  group_by(ZONE_DESC) %>%
-  tally() %>%
-  arrange(-n) %>%
-  kable() %>%
-  kable_styling()
-
-```
-
-## 5.3. Land Use
-
-```{r}
-nash_venue_data %>%
-  group_by(LUDesc) %>%
-  tally() %>%
-  arrange(-n) %>%
-  kable() %>%
-  kable_styling()
-
-```
-
-```{r}
-ggplot(nash_venue_data)+
-  geom_bar(aes(LUDesc))+
-  facet_wrap(~music_space)+
-  coord_flip()+
-  plotTheme
-
-```
-
-```{r}
-ggplot(nash_venue_data %>%
-         filter(music_space == "Music Space"))+
-  geom_bar(aes(LUDesc))+
-  facet_wrap(~IMV)+
-  coord_flip()+
-  plotTheme
-
-```
-
-## 5.4. Building Age
+## 5.2. Building Age
 
 ```{r}
 nash_venue_data %>%
@@ -1250,11 +1210,11 @@ nash_venue_data %>%
 
 ```
 
-## 5.5. Building Condition
+## 5.3. Building Condition
 
 
 
-## 5.6.  Venues by planning area / neighborhood
+## 5.4.  Venues by planning area / neighborhood
 
 All music spaces
 
@@ -1449,7 +1409,7 @@ d1_aggregates_nash %>%
 
 ```
 
-## 5.7. Venues, Programming and Centrality
+## 5.5. Venues, Programming and Centrality
 
 What is the geometric center of venue activity in Nashville?
 
@@ -1501,7 +1461,7 @@ nash_venue_data %>%
   plotTheme
 
 ```
-## 5.7. Venues and Geographic Clustering
+## 5.6. Venues and Geographic Clustering
 
 k-means clustering analysis
 
@@ -1575,9 +1535,103 @@ l2
 
 # 6. Venues and Regulation
 
-- What kind of licenses are associated with these venues?
+## 6.1. Business Licenses
 
-- What about the ones that primarily hold shows (e.g. 10+ per month)
+
+```{r}
+nash_venue_data %>%
+  group_by(BUSTYPE) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable() %>%
+  kable_styling()
+
+```
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  ggplot()+
+  geom_bar(aes(BUSTYPE, fill = IMV), position = "dodge")+
+  coord_flip()+
+  plotTheme
+
+```
+
+## 6.2. Zoning
+
+These are the most coming zoning designations
+
+SOPHIA - can you look up the top 10 of these and see what they actually mean in the code?
+
+```{r}
+nash_venue_data %>%
+  group_by(ZONE_DESC) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable() %>%
+  kable_styling()
+
+```
+
+## 6.3. Land Use
+
+```{r}
+nash_venue_data %>%
+  group_by(LUDesc) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable() %>%
+  kable_styling()
+
+```
+
+```{r}
+ggplot(nash_venue_data)+
+  geom_bar(aes(LUDesc))+
+  facet_wrap(~music_space)+
+  coord_flip()+
+  plotTheme
+
+```
+
+```{r}
+ggplot(nash_venue_data %>%
+         filter(music_space == "Music Space"))+
+  geom_bar(aes(LUDesc, fill = IMV), position = "dodge")+
+  coord_flip()+
+  plotTheme
+
+```
+
+What on earth is going on here? These are businesses along with their IMV designations, LU, Business License type
+
+```{r}
+nash_venue_data %>% 
+  select(BUSTYPE, LUDesc, name, address_admin, IMV, music_space) %>% 
+  kable() %>%
+  kable_styling()
+
+```
+
+How many are actually categorized as "Nightclub" LU and/or Music / event business?
+
+Just 47 - this is about 18.5%
+
+11 of these are IMVs - almost half
+
+```{r}
+nash_venue_data %>%
+  filter(str_detect(BUSTYPE, "Music") |
+           str_detect(BUSTYPE, "Event") |
+           str_detect(LUDesc, "NIGHTCLUB") |
+           str_detect(LUDesc, "THEATER")) %>%
+  select(BUSTYPE, LUDesc, name, address_admin, IMV, music_space) %>% 
+  kable() %>%
+  kable_styling()
+  
+
+```
 
 # 7. Venues and Threats
 
