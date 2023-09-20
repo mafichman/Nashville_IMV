@@ -1,7 +1,7 @@
 ---
 title: "Nashville Venues Project Data Portal"
 author: "Michael Fichman & Sofia Fasullo for PennPraxis"
-date: "8/29/2023"
+date: "9/20/2023"
 output:
   html_document:
     toc: yes
@@ -16,18 +16,11 @@ output:
 
 NOTES AND TO-DO's:
 
-Week of 9/6
-
-- Associate license data with venues in a separate script (Sofia) - by 9/15
-
 Week of 9/13
 
 - Write a methodology and data sources sections - 2 and 3 (Sofia)
 - Annotate maps and charts, to contain proper titles, axis titles, and styling (Sofia)
-- Write top takeaways (Michael) - DONE PENDING NEW DATA - NEED TO ADD SECTION NUMBER REFERENCES
-- Fix some venue data points - before re-running with licenses (Michael):
-
-Nissan Stadium events/month, 3rd and Lindsley independence
+- Add section number references to takeaways, refine risk indicators.
 
 Week of 9/20
 
@@ -43,6 +36,8 @@ Unknown timeframe
 
 Recently finished:
 
+- Associate license data with venues in a separate script (Sofia) - by 9/15
+- Fix some venue data points - before re-running with licenses (Michael): Nissan Stadium events/month, 3rd and Lindsley independence - DONE
 - Add property condition, year built, building use and other data in the data_markdown (Michael) DONE
 - Analyze recent sales values and impart risk scores (Michael) - DONE
 - Do some comparisons with CFP database (Michael) - DONE
@@ -152,7 +147,7 @@ d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregat
 
 
 # Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 9/19/2023
-nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v5.geojson") %>%
+nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v6.geojson") %>%
   st_transform(crs = 4326) %>%
   group_by(name) %>%
   slice(1) %>%
@@ -1630,6 +1625,19 @@ nash_venue_data %>%
   kable() %>%
   kable_styling()
   
+
+```
+## 6.4. Venue and Property Ownership
+
+At how many venues is the owner of the property and owner of the venue the same? Or have the same address?
+
+Note that a few addresses have some address alias problems in the property data and are corrected here.
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  group_by(site_control, IMV) %>%
+  tally()
 
 ```
 
