@@ -203,9 +203,9 @@ Data governance and procedures related to live music, and government land and li
 
 ## 1.1. Venue database characteristics
 
-- Researchers, community members, and focus group experts identified 253 spaces used for music in Nashville on a periodic or regular basis (Section 4). 114 of these were identified as being "Music Spaces", where music is likely to be the primary offer, and events are held more than once per week. The remainder (139) were considered "Occasional Music Spaces" (Section 4.1.2)
+- Researchers, community members, and focus group experts identified 253 spaces used for music in Nashville on a periodic or regular basis (Section 4). 113 of these were identified as being "Music Spaces", where music is likely to be the primary offer, and events are held more than once per week. The remainder (140) were considered "Occasional Music Spaces" (Section 4.1.2)
 
-- 23 of these Music Spaces (and 14 Occasional Music Spaces) were identified by researchers, community members, and focus group experts as likely to be IMVs (Completely independent ownership and operations). 50 Music Spaces were identified as being "Quasi-Independent" because some of their functions were assessed as likely to be contracted to corporate outside entities or they had legal ownership affiliations to other businesses. 41 Music Spaces were assessed as likely to be completely non-independent. 
+- 24 of these Music Spaces (and 14 Occasional Music Spaces) were identified by researchers, community members, and focus group experts as likely to be IMVs (Completely independent ownership and operations). 49 Music Spaces were identified as being "Quasi-Independent" because some of their functions were assessed as likely to be contracted to corporate outside entities or they had legal ownership affiliations to other businesses. 40 Music Spaces were assessed as likely to be completely non-independent. 
 
 ## 1.2. Community programming assessment
 
@@ -1346,7 +1346,7 @@ ggplot(data = d1_aggregates_nash %>%
 
 ```
 
-```{r experimental_plot}
+```{r experimental_plot2}
 
 ggplot(data = d1_aggregates_nash %>%
          filter(is.na(community_focus) == FALSE) %>%
