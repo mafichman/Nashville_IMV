@@ -55,6 +55,16 @@ data_dictionary_view = t(data_dictionary_load) %>% as.data.frame() %>% mutate(co
 
 NOTE: possiblility to streamline this system in the future by reading .R files into this markdown rather than having all this code re-written
 
+Make a few quick data substitutions to reflect some changes in data set
+
+```{r}
+
+venues <- venues %>%
+  mutate(independent_booking = ifelse(name == "3rd & Lindsley", "3. Never", independent_booking),
+         events_per_month = ifelse(name == "Nissan Stadium", "1. 1-4 Events per month", events_per_month))
+
+```
+
 #Joining Census Data to Parent Geography
 
 - Use *~/Github/Nashville_IMV/R/clean_data.R* clean the music venue database so that it is in a format compatible to join with other data sets. 
@@ -260,6 +270,9 @@ venue_full = left_join(venue_select_parcel_data, venues_dist %>%
 #area is of parcel not building so I will not calculate price/sqft just yet
 #will get centroids from venues table rather than re-calculating
 ```
+
+
+
 ```{r}
 # Save an object that's just venue info and polygons
 
@@ -399,6 +412,8 @@ manual_business_match = read.csv("~/Github/Nashville_IMV/data/metro/manual_busin
  
 ```
 
+Join the business records to the main venue data set.
+
 ```{r}
 venue_full <- left_join(venue_full, manual_business_match %>%
                          as.data.frame() %>% 
@@ -412,6 +427,21 @@ venue_full <- left_join(venue_full, manual_business_match %>%
   group_by(name) %>%
   slice(1)
 
+
+```
+
+Correct a few alias issues in the property data, and create an indicator called site_control that indicates if the property owner lists the business address as its location.
+
+```{r}
+
+venue_full <- venue_full %>%
+  mutate(OwnAddr1 = ifelse(name == "The Basement", "1604 8TH AVE S", OwnAddr1),
+         OwnAddr1 = ifelse(name == "Alley Taps", "162 4TH AVE N 205", OwnAddr1),
+         OwnAddr1 = ifelse(name == "The Big Bang Dueling Pianos", "209 3RD AVE N", OwnAddr1),
+         OwnAddr1 = ifelse(name == "Rocketown (Main Building)", "601 4TH AVE S", OwnAddr1),
+         OwnAddr1 = ifelse(name == "Robert's Western World", "416 B BROADWAY", OwnAddr1)) %>%
+  mutate(site_control = ifelse(OwnAddr1 == PropAddr |
+                               OwnAddr1 == address_admin, "On-Site Owner Address", "Off-Site Owner Address")) 
 
 ```
 
@@ -436,7 +466,7 @@ venue_full <- venue_full %>%
 
 st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v6.geojson")
 
-st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v5.geojson")
+st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v6.geojson")
 
 ```
 

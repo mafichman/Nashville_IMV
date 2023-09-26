@@ -1,7 +1,7 @@
 ---
 title: "Nashville Venues Project Data Portal"
 author: "Michael Fichman & Sofia Fasullo for PennPraxis"
-date: "8/29/2023"
+date: "9/20/2023"
 output:
   html_document:
     toc: yes
@@ -16,16 +16,12 @@ output:
 
 NOTES AND TO-DO's:
 
-Week of 9/13
 
 - Write a methodology and data sources sections - 2 and 3 (Sofia - started)
 - Annotate maps and charts, to contain proper titles, axis titles, and styling (Sofia)
-- Write top takeaways (Michael) - DONE PENDING NEW DATA - NEED TO ADD SECTION NUMBER REFERENCES
-- Fix some venue data points - before re-running with licenses (Michael):
+- Add section number references to takeaways, refine risk indicators. (Michael)
 
-Nissan Stadium events/month, 3rd and Lindsley independence
-
-Week of 9/20
+Week of 9/27
 
 - Create graphics for each venue zoom in - see end of document - sect 9
 - Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes (Sofia) - Sect. 8.1.
@@ -39,6 +35,8 @@ Unknown timeframe
 
 Recently finished:
 
+- Associate license data with venues in a separate script (Sofia) - by 9/15
+- Fix some venue data points - before re-running with licenses (Michael): Nissan Stadium events/month, 3rd and Lindsley independence - DONE
 - Add property condition, year built, building use and other data in the data_markdown (Michael) DONE
 - Analyze recent sales values and impart risk scores (Michael) - DONE
 - Do some comparisons with CFP database (Michael) - DONE
@@ -148,7 +146,7 @@ d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregat
 
 
 # Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 9/19/2023
-nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v5.geojson") %>%
+nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v6.geojson") %>%
   st_transform(crs = 4326) %>%
   group_by(name) %>%
   slice(1) %>%
@@ -204,9 +202,9 @@ Data governance and procedures related to live music, and government land and li
 
 ## 1.1. Venue database characteristics
 
-- Researchers, community members, and focus group experts identified 253 spaces used for music in Nashville on a periodic or regular basis (Section 4). 114 of these were identified as being "Music Spaces", where music is likely to be the primary offer, and events are held more than once per week. The remainder (139) were considered "Occasional Music Spaces" (Section 4.1.2)
+- Researchers, community members, and focus group experts identified 253 spaces used for music in Nashville on a periodic or regular basis (Section 4). 113 of these were identified as being "Music Spaces", where music is likely to be the primary offer, and events are held more than once per week. The remainder (140) were considered "Occasional Music Spaces" (Section 4.1.2)
 
-- 23 of these Music Spaces (and 14 Occasional Music Spaces) were identified by researchers, community members, and focus group experts as likely to be IMVs (Completely independent ownership and operations). 50 Music Spaces were identified as being "Quasi-Independent" because some of their functions were assessed as likely to be contracted to corporate outside entities or they had legal ownership affiliations to other businesses. 41 Music Spaces were assessed as likely to be completely non-independent. 
+- 24 of these Music Spaces (and 14 Occasional Music Spaces) were identified by researchers, community members, and focus group experts as likely to be IMVs (Completely independent ownership and operations). 49 Music Spaces were identified as being "Quasi-Independent" because some of their functions were assessed as likely to be contracted to corporate outside entities or they had legal ownership affiliations to other businesses. 40 Music Spaces were assessed as likely to be completely non-independent. 
 
 ## 1.2. Community programming assessment
 
@@ -257,7 +255,13 @@ Data governance and procedures related to live music, and government land and li
 
 - Nashville is similar to Montreal and Sydney in that it is automobile oriented - with demographic indicators less heavily driven by bid-rent functions and agglomeration effects associated with fixed transportation.
 
-## 1.7. US Census Analysis
+## 1.7. Risk Exposure
+
+IMVs, Quasi-IMVs and Non-IMVs are exposed to similar amounts of development risk, on average. However, IMVs are far less prepared to offset risk than their competitors.
+
+We define cost risk exposure as a composite measure of the intensity of nearby real estate, relative cost of nearby real estate activity, lack of site control, building condition, community-assessed programming investments, and community identified threats from licensing or neighbor conflicts.
+
+## 1.8. US Census Analysis
 
 TBD
 
@@ -397,7 +401,7 @@ nash_venue_data %>%
 
 This is JUST  FOR MUSIC SPACES, does not include occasional music spaces
 
-```{r make_fishnet}
+```{r}
 fishnet <- st_make_grid(d1_aggregates_nash %>%
                           st_transform(crs = 2274), 
                         cellsize = 5280) %>% #size in feet - half mile
@@ -431,7 +435,7 @@ fishnet <- st_join(fishnet,
   left_join(fishnet, .)
 ```
 
-```{r fishnet_map, warning = FALSE, message = FALSE}
+```{r warning = FALSE, message = FALSE}
 
 # Make sure you set the labels here to reflect the actual max density by cell
 
@@ -456,7 +460,7 @@ ggplot()+
   mapTheme
 ```
 
-```{r fishnet_w_basemap}
+```{r}
 ggmap(base_map1) +
  geom_sf(data = ll(fishnet %>%
             filter(n_venues >0)),
@@ -537,7 +541,7 @@ ggplot(data = nash_venue_data)+
 
 ### 4.4.1. Histogram of capacity
 
-NOTE - These data are not complete as of 9/5 - we are awaiting data from Nash FD - these are data from the Chamber's study several years ago.
+NOTE - These data are not complete as of 9/5 - we are awaiting data from Nash FD - these are data from the Chamber's study several years ago and very incomplete
 
 ```{r community_histogram}
 ggplot(data = nash_venue_data %>%
@@ -1215,7 +1219,7 @@ nash_venue_data %>%
 
 All music spaces
 
-```{r venues_total_map}
+```{r}
 ggplot()+
   geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
           color = 'grey')+
@@ -1234,7 +1238,7 @@ ggplot()+
 
 ```
 
-```{r venues_full_indie_map}
+```{r}
 ggplot()+
   geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
           color = 'grey')+
@@ -1253,7 +1257,7 @@ ggplot()+
 
 ```
 
-```{r venues_quasi_indie_map}
+```{r}
 ggplot()+
   geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
           color = 'grey')+
@@ -1273,18 +1277,7 @@ ggplot()+
 ```
 
 
-
-- k=5 mean square footage costs of recent sales (inflation adjusted) for indies
-
-- Comparison to CFP cities - programming and real estate relationships
-
-- Programming, cost and relationship to distance to CBD
-
-- Venue age by district - where are the young and old venues?
-
-- CFP indicators maps
-
-```{r experimentation}
+```{r}
 ggplot()+
   geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
           color = 'grey')+
@@ -1303,7 +1296,7 @@ ggplot()+
 
 ```
 
-```{r community_map}
+```{r}
 ggplot()+
   geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
           color = 'grey')+
@@ -1322,7 +1315,7 @@ ggplot()+
 
 ```
 
-```{r experimental_plot}
+```{r}
 
 ggplot(data = d1_aggregates_nash %>%
          filter(is.na(experimentation) == FALSE) %>%
@@ -1348,7 +1341,7 @@ ggplot(data = d1_aggregates_nash %>%
 
 ```
 
-```{r experimental_plot}
+```{r}
 
 ggplot(data = d1_aggregates_nash %>%
          filter(is.na(community_focus) == FALSE) %>%
@@ -1432,6 +1425,8 @@ centroid_point <- nash_venue_data %>%
 
 ```
 
+Distance summary statistics of venue types from center of cluster (Music Spaces only)
+
 ```{r}
 nash_venue_data %>%
   st_as_sf(crs = 4326) %>%
@@ -1498,7 +1493,7 @@ plot(k.values, wss_values,
 test <- kmeans(nash_venue_data %>% 
            filter(music_space == "Music Space", 
                   is.na(y) == FALSE) %>% 
-            select(x, y), centers = 7, nstart = 25)
+            select(x, y), centers = 8, nstart = 25)
 ```
 
 This interactive map shows the location of these clusters:
@@ -1627,6 +1622,23 @@ nash_venue_data %>%
   kable() %>%
   kable_styling()
   
+
+```
+## 6.4. Venue and Property Ownership
+
+At how many venues is the owner of the property and owner of the venue the same? Or have the same address?
+
+Note that a few addresses have some address alias problems in the property data and are corrected here.
+
+Music Spaces - is the owner's address the same as the property address (a likely sign of site control)
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  group_by(site_control, IMV) %>%
+  tally() %>%
+  kable() %>%
+  kable_styling()
 
 ```
 
@@ -1785,10 +1797,12 @@ Quartile Value (amongst music spaces) of:
 -Parcel appraised value as a pct of sqft value of sales w/in half mile
 
 Plus:
--Physical condition (1 if average, 2 if fair, 4 if poor or very poor)
-Community ranked Programming investment (e.g. experimentation, community focus 1 - 4)
+- Physical condition (1 if average, 2 if fair, 4 if poor or very poor)
+- Community ranked Programming investment (e.g. experimentation, community focus 1 - 4)
+- Community threat assessment - If multiple threats identified (cost, licensing, neighborhs) - 4, if 1, 3, of none - 0
+- Site ownership - 4 if owner != property owner, -4 if owner == property owner
 
-WOULD LIKE TO ADD CAPACITY TO THIS - ALSO ADD COMMUNITY ID'd THREATS
+WOULD LIKE TO ADD CAPACITY TO THIS
 
 ```{r}
 risk_matrix <- nash_venue_data %>%
@@ -1832,7 +1846,7 @@ risk_matrix <- nash_venue_data %>%
   left_join(., nash_venue_data %>%
               filter(music_space == "Music Space") %>%
               select(IMV, name, address_admin, APN, music_space, Condition, 
-                     threats_neighbors, threats_cost, threats_licensing)) %>%
+                     threats_neighbors, threats_cost, threats_licensing, site_control)) %>%
   mutate(Condition_ord = case_when(str_detect(Condition, "Poor") == TRUE ~ 4,
                                    str_detect(Condition, "Fair") == TRUE ~ 2,
                                    str_detect(Condition, "Average") == TRUE ~ 1,
@@ -1840,11 +1854,16 @@ risk_matrix <- nash_venue_data %>%
   mutate(community_threat_assessment = case_when(threats_neighbors + threats_cost + threats_licensing > 1  ~ 4,
                                                  threats_neighbors + threats_cost + threats_licensing == 1  ~ 3,
                                                  threats_neighbors + threats_cost + threats_licensing < 1  ~ 0)) %>%
+    mutate(site_control_assessment = case_when(site_control == "On-Site Owner Address"  ~ -4,
+                                                 site_control == "Off-Site Owner Address" ~ 0,
+                                               is.na(site_control) == TRUE ~ 0)) %>%
   mutate(cumulative_risk = sum(appraisal_ratio + Condition_ord + community_threat_assessment +
-                                 experimentation_ord + community_focus_ord + value_sqft +
-                                 medianAppraisal + n_sales, na.rm = TRUE))
+                                 experimentation_ord + community_focus_ord + #value_sqft +
+                                 medianAppraisal + n_sales + site_control_assessment, na.rm = TRUE))
 
 ```
+
+Risk exposure levels are relatively similar between venue types.
 
 ```{r}
 ggplot(risk_matrix)+
@@ -1878,10 +1897,6 @@ risk_matrix %>%
   mapTheme
 
 ```
-
-
-
-- What are the areas of opportunity (e.g. can we ID relatively lower rent areas with high percentages of young adults, reasonable proximity to downtown?)
 
 # 9. Maps for report
 
