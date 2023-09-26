@@ -16,9 +16,8 @@ output:
 
 NOTES AND TO-DO's:
 
-Week of 9/20
 
-- Write a methodology and data sources sections - 2 and 3 (Sofia)
+- Write a methodology and data sources sections - 2 and 3 (Sofia - started)
 - Annotate maps and charts, to contain proper titles, axis titles, and styling (Sofia)
 - Add section number references to takeaways, refine risk indicators. (Michael)
 
@@ -288,11 +287,12 @@ TBD
 
 What did we do?
 
-We collected the data set with liaisons, community members and desk research
+We collected the data set with liaisons, community members and desk research. This was an iterative process in which we reviewed and requested more data to fill gaps. The result was a living venue data set for Nashville which involves an informative survey about the ownership and operation of each venue and occasional music space, as well as general site information.
 
-We related each venue to it's APN number (a property identifier) and joined it to tax records, license records.
+We related each venue to it's APN number (a property identifier) through an arduous manual process and joined it to tax records, license records, business inspections, and other municipal data. APN numbers act as a key to finding an array of information on a property, however these properties often contain many addresses and required further work to show only information for addresses with music performance areas. Throughout this data process, we kept notes on what edits to municipal data we might propose in order for studies like ours to be done faster in the future.
 
-We created variables for sq ft costs, dist to CBD centroid, joined venues to districts and summarized programming variables.
+
+We created variables for square footage cost, distance from the economic center of Nashville, and many more variables that inform on the accessibility of these music spaces to audiences, musicians, programmers, and owners. From there we aggregated the data by neighborhood in Nashville in order to get a sense of broader trends. Both our venue data and neighborhood summary data were visualized in order to make sense of where people are hosting and attending live music events, and where that activity might be in need of help.
 
 # 4. Venue Database
 
