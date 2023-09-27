@@ -63,6 +63,7 @@ library(leaflet.extras)
 library(lubridate)
 library(mapview)
 library(DT)
+library(scales)
 
 # ---- Load Graphic Palettes ----
 
@@ -104,6 +105,18 @@ mapTheme <- theme(plot.title =element_text(size=12),
 palette <- c("#10142A", "#47E9B9", "#F55D60", "#71EA48", "#C148EA", "#EAC148")
 viridisPalette <- c("#440154", "#73D055", "#F55D60", "#238A8D", "#FDE725")
 CityPalette <- c("#A230C2", "#3AEAB8", "#F9C700", "#0069FC", "#EF3340", "#bdbdbd") # Berlin, NYC, Tokyo, Stockholm, Montreal, Sydney
+
+#Nashville Palette
+pink = "#bc5f6c"
+black = "#050404"
+beige = "#e3d0b8"
+purple = "#643c4c"
+grey = "#7c7c7c"
+indigo = "#382351"
+teal_light = "#08877c"
+teal = "#0e645b"
+
+NashPalette = c(pink,black,beige,purple,grey,indigo,teal_light,teal)
 ```
 
 ```{r load_cfp_data, message=FALSE, warning=FALSE, results = 'hide'}
@@ -323,14 +336,26 @@ More than 1 show per week (5+ per month), is live music the purpose rated "somew
 ```{r}
 nash_venue_data %>%
   group_by(music_space) %>%
-  tally()
+  tally() %>% 
+  kable(
+    col.names = c("Reputation","Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 ```
 
 ```{r}
 nash_venue_data %>%
   group_by(music_space, IMV) %>%
-  tally()
+  tally() %>% 
+  kable(
+    col.names = c("Reputation","Independence Status","Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 ```
 
@@ -346,8 +371,13 @@ ggplot()+
   geom_point(data = nash_venue_data,
              aes(x = x, y = y, color = music_space),
              alpha = 0.3, size = 1)+
+  scale_color_manual(values=c(teal,pink))+
+  labs(
+    title = "Venue Density",
+    subtitle = "",
+    caption = "[data source]",
+    colour = "Space Type")+
   mapTheme
-
 ```
 
 Music spaces by indepenence
@@ -359,8 +389,9 @@ ggplot()+
           color = 'white')+
   geom_point(data = nash_venue_data %>%
                filter(music_space == "Music Space"),
-             aes(x = x, y = y),
-             alpha = 0.3, size = 1)+
+             aes(x = x, y = y,color=IMV),
+             alpha = 0.3, size = 1,show.legend = F)+ 
+  scale_color_manual(values=c(teal,pink,indigo))+
   facet_wrap(~IMV)+
   mapTheme
 
@@ -381,7 +412,7 @@ l <- leaflet() %>%
                    lat=~y,
                    radius =~ 1, 
                    fillOpacity =~ 1,
-                   color =~ "blue",
+                   color =~ indigo,
                    label=~paste(name, address_admin, IMV))
 
 l
@@ -394,7 +425,7 @@ nash_venue_data %>%
            crs= 4326) %>%
   filter(music_space == "Music Space") %>%
   select(name, address_admin, APN, IMV, ownership_structure, independent_booking, capacity, TotlAppr) %>%
-  mapView(., zcol = "IMV")
+  mapView(., zcol = "IMV",layer.name="Music Venues", col.regions=c(pink,teal,indigo), legend=T)
 
 ```
 ### 4.2.2. Heat map (ggplot)
@@ -439,6 +470,31 @@ fishnet <- st_join(fishnet,
 
 # Make sure you set the labels here to reflect the actual max density by cell
 
+#max(fishnet$n_venues)
+#
+#ggplot()+
+#  geom_sf(data = d1_aggregates_nash,
+#          fill = '#f0f0f0', 
+#          color = 'white')+
+#  geom_sf(data = fishnet %>%
+#            filter(n_venues >0), 
+#          aes(fill = n_venues),
+#          color = "transparent",
+#          alpha = 0.4)+
+#  scale_fill_viridis('VENUES/\nmi^2', direction = -1,
+                     #limits=c(1,max(fishnet$n_venues)), breaks=c(1, #max(fishnet$n_venues)),
+#                     #labels=c("1",max(fishnet$n_venues)))+
+#  labs(
+#    title = "VENUE DENSITY - Nashville, 2023",
+#    subtitle = "",
+#    caption = "Data: PennPraxis, Metro #Nashville")+
+#  mapTheme
+```
+
+```{r warning = FALSE, message = FALSE}
+
+# Make sure you set the labels here to reflect the actual max density by cell
+
 max(fishnet$n_venues)
 
 ggplot()+
@@ -449,16 +505,15 @@ ggplot()+
             filter(n_venues >0), 
           aes(fill = n_venues),
           color = "transparent",
-          alpha = 0.4)+
-  scale_fill_viridis('VENUES/\nmi^2', direction = -1,
-                     limits=c(1,max(fishnet$n_venues)), breaks=c(1, max(fishnet$n_venues)),
-                     labels=c("1",max(fishnet$n_venues)))+
+          alpha = 0.8)+
+  scale_fill_gradient2(low=beige,high=purple,midpoint=18,mid=pink,limits=c(1,max(fishnet$n_venues)), breaks=c(1, max(fishnet$n_venues)), labels=c("1",max(fishnet$n_venues)),name="# Venues in 1/2-mile")+
   labs(
     title = "VENUE DENSITY - Nashville, 2023",
     subtitle = "",
     caption = "Data: PennPraxis, Metro Nashville")+
   mapTheme
 ```
+
 
 ```{r}
 ggmap(base_map1) +
@@ -467,10 +522,8 @@ ggmap(base_map1) +
             inherit.aes = TRUE,
           aes(fill = n_venues),
           color = "transparent",
-          alpha = 0.4)+
-  scale_fill_viridis('VENUES/\nmi^2', direction = -1,
-                     limits=c(1,max(fishnet$n_venues)), breaks=c(1, max(fishnet$n_venues)),
-                     labels=c("1",max(fishnet$n_venues)))+
+          alpha = 0.8)+
+  scale_fill_gradient2(low=beige,high=purple,midpoint=18,mid=pink,limits=c(1,max(fishnet$n_venues)), breaks=c(1, max(fishnet$n_venues)), labels=c("1",max(fishnet$n_venues)),name="# Venues in 1/2-mile")+
   labs(
     title = "VENUE DENSITY - Nashville / Davidson County, 2023",
     subtitle = "",
@@ -493,8 +546,8 @@ TO DO ONCE d1_aggregates_nash is set
 ```{r}
 ggplot(data = nash_venue_data %>%
          filter(is.na(ownership_structure) == FALSE))+
-  geom_bar(aes(ownership_structure), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(ownership_structure,fill=ownership_structure), alpha = 0.6, size = 3, show.legend=F)+
+  scale_fill_manual(values=c(indigo,teal_light))+
   labs(
     title = "Q: Is the venue independently owned and operated?",
     subtitle = "Independence - no association with another business through common ownership\n or affiliation (sharing of employees, resources, branding etc.,)",
@@ -510,8 +563,8 @@ ggplot(data = nash_venue_data %>%
 ```{r}
 ggplot(data = nash_venue_data %>%
          filter(is.na(independent_booking) == FALSE))+
-  geom_bar(aes(independent_booking), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(independent_booking,fill=independent_booking), alpha = 0.6, size = 3,show.legend = F)+
+  scale_fill_manual(values=c(pink,purple,teal,beige))+
   labs(
     title = "Are booking or promotion contracted to corporate partners? ",
     subtitle = "",
@@ -524,8 +577,8 @@ ggplot(data = nash_venue_data %>%
 
 ```{r}
 ggplot(data = nash_venue_data)+
-  geom_bar(aes(IMV), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(IMV,fill=IMV), alpha = 0.6, size = 3, show.legend = F)+
+  scale_fill_manual(values=c(black,indigo,teal_light))+
   labs(
     title = "IMV Status",
     subtitle = "Independent Ownership Structure and Independent Booking & Promotion",
@@ -547,7 +600,7 @@ NOTE - These data are not complete as of 9/5 - we are awaiting data from Nash FD
 ggplot(data = nash_venue_data %>%
          mutate(capacity = as.numeric(capacity)) %>%
          filter(capacity < 5000))+
-  geom_histogram(aes(capacity), fill = CityPalette[6], alpha = 0.6, binwidth = 250)+
+  geom_histogram(aes(capacity),fill=teal_light ,alpha = 0.6, binwidth = 250)+
   #scale_fill_viridis_d()+
   labs(
     title = "Capacity",
@@ -566,8 +619,8 @@ ggplot(data = nash_venue_data %>%
 ggplot(data = nash_venue_data %>%
          mutate(capacity = as.numeric(capacity)) %>%
          filter(capacity < 5000) )+
-  geom_histogram(aes(capacity), fill = CityPalette[6], alpha = 0.6, binwidth = 250)+
-  #scale_fill_viridis_d()+
+  geom_histogram(aes(capacity,fill=IMV), alpha = 0.6, binwidth = 250,show.legend = F)+
+  scale_fill_manual(values=c(pink,indigo,teal_light))+
   labs(
     title = "Capacity",
     subtitle = "Capacities Over 5000 are removed",
@@ -587,8 +640,12 @@ nash_venue_data %>%
   group_by(IMV) %>%
   summarize(total_capacity = sum(capacity, na.rm = TRUE),
             median_capacity = median(capacity, na.rm = TRUE)) %>%
-  kable() %>%
-  kable_styling()
+  kable(
+    col.names = c("Independence Status","Gross Capacity", "Median Capacity")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 ```
 
@@ -599,10 +656,10 @@ nash_venue_data %>%
 ## 4.5. Venue Age
 
 ```{r}
-
+##need to label NA
 ggplot(nash_venue_data )+
-  geom_bar(aes(years_operating), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(years_operating,fill = years_operating), alpha = 0.6, size = 3,show.legend = F)+
+  scale_fill_manual(values=c(CityPalette[6],teal_light,teal,indigo,black))+
   labs(
     title = "Years Operating",
     subtitle = "",
@@ -616,8 +673,8 @@ ggplot(nash_venue_data )+
 ```{r}
 
 ggplot(nash_venue_data )+
-  geom_bar(aes(years_operating), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(years_operating,fill = years_operating), alpha = 0.6, size = 3,show.legend = F)+
+  scale_fill_manual(values=c(CityPalette[6],teal_light,teal,indigo,black))+
   labs(
     title = "Years Operating",
     subtitle = "",
@@ -634,7 +691,7 @@ ggplot(nash_venue_data )+
 ggplot(nash_venue_data %>%
          filter(music_space == "Music Space"))+
   geom_bar(aes(years_operating, fill = IMV), position = "dodge", alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  scale_fill_manual(values=c(teal_light,beige,pink))+
   labs(
     title = "Years Operating",
     subtitle = "",
@@ -662,8 +719,8 @@ ggplot(nash_venue_data)+
 
 ggplot(nash_venue_data %>%
         filter(music_space == "Music Space"))+
-  geom_bar(aes(events_per_month), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(events_per_month, fill=events_per_month), alpha = 0.6, size = 3, show.legend = F)+
+  scale_fill_manual(values=c(pink,teal,purple))+
   labs(
     title = "Events Per Month, Music Spaces",
     subtitle = "",
@@ -695,8 +752,8 @@ Answer - roughly 40%, higher than Quasi and non-IMV
 
 ggplot(nash_venue_data %>%
          filter(music_space == "Music Space"))+
-  geom_bar(aes(experimentation), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(experimentation,fill=experimentation),  alpha = 0.6, size = 3,show.legend = F)+
+   scale_fill_manual(values=c(indigo,pink,teal,purple))+
   labs(
     title = "Experimentation Likelihood - Music Spaces",
     subtitle = "Q: Compared to other venues in the city: Is this venue a platform for niche or experimental trends, sounds and art forms? Is it a place for experimental performers or extraordinary event concepts?",
@@ -710,8 +767,8 @@ ggplot(nash_venue_data %>%
 ```{r}
 ggplot(nash_venue_data %>%
          filter(music_space == "Music Space"))+
-  geom_bar(aes(experimentation), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(experimentation,fill=experimentation),  alpha = 0.6, size = 3,show.legend = F)+
+   scale_fill_manual(values=c(indigo,pink,teal,purple))+
   labs(
     title = "Experimentation Likelihood",
     subtitle = "Q: Compared to other venues in the city: Is this venue a platform for niche or experimental trends, sounds and art forms? Is it a place for experimental performers or extraordinary event concepts?",
@@ -731,7 +788,12 @@ nash_venue_data %>%
   summarize(mean_experimentation = mean(experimentation_ord, na.rm = TRUE),
             n = n()) %>%
   arrange(music_space) %>%
-  kable()
+  kable(
+    col.names = c("Independence Status","Reputation", 'Average Experimental "Score"',"Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 
 ```
@@ -742,7 +804,12 @@ nash_venue_data %>%
   group_by(IMV, experimentation) %>%
   tally() %>%
   mutate(pct = 100*(n/sum(n))) %>%
-  kable()
+  kable(
+    col.names = c("Independence Status","Experimental Programming Status", "Number of Venues","% Venues in Independence Status")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 
 ```
@@ -752,8 +819,8 @@ nash_venue_data %>%
 ```{r}
 
 ggplot(nash_venue_data)+
-  geom_bar(aes(purpose), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(purpose,fill=purpose),alpha = 0.6, size = 3,show.legend = F)+
+  scale_fill_manual(values=c("#f0f0f0",pink,black,indigo,teal_light))+
   labs(
     title = "Main Purpose",
     subtitle = "Q: Is the music program the main purpose why people attend this venue, and not e.g. food, drink, products?",
@@ -763,8 +830,8 @@ ggplot(nash_venue_data)+
   plotTheme
 
 ggplot(nash_venue_data)+
-  geom_bar(aes(purpose), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(purpose,fill=purpose), alpha = 0.6, size = 3, show.legend = F)+
+  scale_fill_manual(values=c("#f0f0f0",pink,black,indigo,teal_light))+
   labs(
     title = "Main Purpose",
     subtitle = "Q: Is the music program the main purpose why people attend this venue, and not e.g. food, drink, products?",
@@ -783,8 +850,8 @@ ggplot(nash_venue_data)+
 ```{r}
 ggplot(nash_venue_data %>%
          filter(music_space == "Music Space"))+
-  geom_bar(aes(interdisciplinarity), fill = CityPalette[6], alpha = 0.6, size = 3)+
-  #scale_fill_viridis_d()+
+  geom_bar(aes(interdisciplinarity,fill=interdisciplinarity), alpha = 0.6, size = 3, show.legend = F)+
+  scale_fill_manual(values=NashPalette)+
   labs(
     title = "Interdisciplinarity - Music Spaces",
     subtitle = "Q: Does the venue offer events for non-music presentations, such visual art, performing art, panel discussions or film screenings?",
@@ -803,7 +870,12 @@ nash_venue_data %>%
   summarize(mean_interdisciplinarity = mean(interdisciplinarity_ord, na.rm = TRUE),
             n = n()) %>%
   arrange(music_space) %>%
-  kable()
+  kable(
+    col.names = c("Independence Status","Reputation",'Average "Score" for Interdisciplinary Programming', "Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 
 ```
@@ -852,7 +924,12 @@ nash_venue_data %>%
   summarize(mean_community_focus = mean(community_focus_ord, na.rm = TRUE),
             n = n()) %>%
   arrange(music_space) %>%
-  kable()
+  kable(
+    col.names = c("Independence Status","Reputation",'Average "Score" Community-Focused Programming',"Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 
 ```
@@ -863,7 +940,12 @@ nash_venue_data %>%
   group_by(IMV, community_focus) %>%
   tally() %>%
   mutate(pct = 100*(n/sum(n))) %>%
-  kable()
+  kable(
+    col.names = c("Independence Status",'Average "Score" Community-Focused Programming',"Number of Venues","% from Venues of Independence Status")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 
 ```
@@ -878,7 +960,12 @@ nash_venue_data %>%
   group_by(IMV, likely_community_focus) %>%
   tally() %>%
   mutate(pct = 100*(n/sum(n))) %>%
-  kable()
+  kable(
+    col.names = c("Independence Status",'Community-Focused Programming',"Number of Venues","% from Venues of Independence Status")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 
 ```
@@ -940,7 +1027,12 @@ nash_venue_data %>%
   summarize(mean_event_promotion = mean(event_promotion_ord, na.rm = TRUE),
             n = n()) %>%
   arrange(music_space) %>%
-  kable()
+  kable(
+    col.names = c("Independence Status","Reputation",'Average "Score" for Event Promotion',"Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
 
 
 ```
@@ -958,8 +1050,14 @@ main_venue_data %>%
           mutate(city = "Nashville") %>%
           group_by(city) %>%
           tally) %>%
-  kable() %>%
-  kable_styling()
+  arrange(desc(n)) %>% 
+  kable(
+    col.names = c("City","Number of Music Spaces")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F) %>% 
+  row_spec(5,color = "#ffffff",background = teal,bold = T)
 
 ```
 ### 4.7.2. Venue Density by City and Area
@@ -993,7 +1091,15 @@ d1_aggregates %>%
           mutate(city = "Nashville")) %>%
   mutate(total_venues = ifelse(city == "Nashville", 253, total_venues)) %>%
   mutate(venues_per_10k = total_venues / (total_pop/10000),
-         venue_sqkm = total_venues / area_sqkm)
+         venue_sqkm = total_venues / area_sqkm) %>% arrange(desc(total_pop)) %>%
+  kable(
+    col.names = c("City","Population","Number of Music Spaces","Area (sq m)","Number of Venues per 10k People","Venues Density (/sq m)")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F) %>% 
+  row_spec(6,bold=T,color = "#ffffff",background = indigo)
+
   
 
 ```
@@ -1015,8 +1121,17 @@ d1_aggregates %>%
           select(venue_count, d1_name) %>%
           mutate(city = "Nashville")) %>%
   arrange(-venue_count) %>%
-  kable() %>%
-  kable_styling()
+  kable(
+    col.names = c("City","District Name","Number of Music Spaces")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F) %>% 
+  row_spec(5, background = teal_light,color="#ffffff",bold=T) %>% 
+  row_spec(15, background = teal_light,color="#ffffff",bold=T) %>% row_spec(16, background = teal_light,color="#ffffff",bold=T) %>% row_spec(32, background = teal_light,color="#ffffff",bold=T) %>% 
+  row_spec(38, background = teal_light,color="#ffffff",bold=T)%>% 
+  row_spec(51, background = teal_light,color="#ffffff",bold=T)
+
   
 
 ```
