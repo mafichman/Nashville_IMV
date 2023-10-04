@@ -63,7 +63,12 @@ library(leaflet.extras)
 library(lubridate)
 library(mapview)
 library(DT)
+#<<<<<<< main
 library(scales)
+library(cluster)
+library(factoextra)
+library(ggmap)
+#>>>>>>> main
 
 # ---- Load Graphic Palettes ----
 
@@ -173,7 +178,7 @@ nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venu
 ```
 
 ```{r create_basemaps}
-library(ggmap)
+
 
 
 ll <- function(dat, proj4 = 4326){
@@ -1705,9 +1710,6 @@ This doesn't really produce anything that's much different than the planning are
 
 ```{r elbow}
 set.seed(123)
-
-library(cluster)
-library(factoextra)
 
 # function to compute total within-cluster sum of square 
 wss <- function(k) {
