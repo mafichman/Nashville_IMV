@@ -1,7 +1,7 @@
 ---
-title: "Nashville Venues Project Data Portal"
+title: "Nashville IMV Study Data - NOT FOR DISTRIBUTION"
 author: "Michael Fichman & Sofia Fasullo for PennPraxis"
-date: "9/20/2023"
+date: "10/4/2023"
 output:
   html_document:
     toc: yes
@@ -13,36 +13,7 @@ output:
     toc: yes
 ---
 
-
-NOTES AND TO-DO's:
-
-
-- Write a methodology and data sources sections - 2 and 3 (Sofia - started)
-- Annotate maps and charts, to contain proper titles, axis titles, and styling (Sofia)
-- Add section number references to takeaways, refine risk indicators. (Michael)
-
-Week of 9/27
-
-- Create graphics for each venue zoom in - see end of document - sect 9
-- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes (Sofia) - Sect. 8.1.
-
-
-Unknown timeframe
-
-- Add capacity data and re-run data_markdown with "venue ladder" and cfp comparison (TBD - ??)
-- Render graphics for document
-
-
-Recently finished:
-
-- Associate license data with venues in a separate script (Sofia) - by 9/15
-- Fix some venue data points - before re-running with licenses (Michael): Nissan Stadium events/month, 3rd and Lindsley independence - DONE
-- Add property condition, year built, building use and other data in the data_markdown (Michael) DONE
-- Analyze recent sales values and impart risk scores (Michael) - DONE
-- Do some comparisons with CFP database (Michael) - DONE
-- k-means clustering (Michael)
-- Please double check the census data for Nashville (Sofia) - DONE - Michael 9/18
-
+THIS IS AN INTERNAL DOCUMENT AND NOT FOR DISTRIBUTION
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -186,8 +157,8 @@ st_transform(dat, proj4)
 }
 ```
 
-```{r message = FALSE}
-base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash),10000)))),
+```{r message = FALSE, eval = FALSE}
+base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash), 1000)))),
                     force = TRUE, maptype = "toner-lite", zoom = 11)
 
 ```
@@ -308,7 +279,6 @@ What did we do?
 We collected the data set with liaisons, community members and desk research. This was an iterative process in which we reviewed and requested more data to fill gaps. The result was a living venue data set for Nashville which involves an informative survey about the ownership and operation of each venue and occasional music space, as well as general site information.
 
 We related each venue to it's APN number (a property identifier) through an arduous manual process and joined it to tax records, license records, business inspections, and other municipal data. APN numbers act as a key to finding an array of information on a property, however these properties often contain many addresses and required further work to show only information for addresses with music performance areas. Throughout this data process, we kept notes on what edits to municipal data we might propose in order for studies like ours to be done faster in the future.
-
 
 We created variables for square footage cost, distance from the economic center of Nashville, and many more variables that inform on the accessibility of these music spaces to audiences, musicians, programmers, and owners. From there we aggregated the data by neighborhood in Nashville in order to get a sense of broader trends. Both our venue data and neighborhood summary data were visualized in order to make sense of where people are hosting and attending live music events, and where that activity might be in need of help.
 
@@ -495,7 +465,7 @@ ggplot()+
 ```
 
 
-```{r}
+```{r, eval = FALSE}
 ggmap(base_map1) +
  geom_sf(data = ll(fishnet %>%
             filter(n_venues >0)),
@@ -1073,7 +1043,7 @@ d1_aggregates %>%
   mutate(venues_per_10k = total_venues / (total_pop/10000),
          venue_sqkm = total_venues / area_sqkm) %>% arrange(desc(total_pop)) %>%
   kable(
-    col.names = c("City","Population","Number of Music Spaces","Area (sq m)","Number of Venues per 10k People","Venues Density (/sq m)")
+    col.names = c("City","Population","Number of Music Spaces","Area (sq km)","Number of Venues per 10k People","Venues Density (/sq km)")
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
@@ -1116,7 +1086,8 @@ kable_styling(bootstrap_options=c('striped','hover',
   row_spec(95, background = teal_light,color="#ffffff",bold=T)%>% 
   row_spec(96, background = teal_light,color="#ffffff",bold=T)%>% 
   row_spec(111, background = teal_light,color="#ffffff",bold=T)%>% 
-  row_spec(160, background = teal_light,color="#ffffff",bold=T)
+  row_spec(160, background = teal_light,color="#ffffff",bold=T)  %>% 
+ scroll_box(height = "200px")
 
   
 
@@ -1317,7 +1288,7 @@ nash_venue_data %>%
   summarize(mean_programming_sum = mean(programming_sum, na.rm = TRUE),
             median_programming_sum = median(programming_sum, na.rm = TRUE)) %>% 
   kable(
-    col.names = c("Independence Status",'Average "Score" on our Independent Programming Metric','Median "Score" on our Independent Programming Metric')
+    col.names = c("Independence Status",'Average Cummulative Programming Score','Median Score ')
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
@@ -1666,10 +1637,10 @@ nash_venue_data %>%
   filter(music_space == "Music Space") %>%
   as.data.frame() %>%
   group_by(IMV) %>%
-  summarize(mean_dist = round(mean(centroid_dist) / 5280),
-            median = round(median(centroid_dist) / 5280)) %>% 
+  summarize(mean_dist = as.numeric(mean(centroid_dist) / 5280),
+            median = as.numeric(median(centroid_dist) / 5280)) %>% 
   kable(
-    col.names = c("Independence Status",'Average Distance from Center',"Median Distance from Center")
+    col.names = c("Independence Status",'Average Distance from Center (mi)',"Median Distance from Center (mi)")
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
@@ -1808,9 +1779,7 @@ labs(
 
 ## 6.2. Zoning
 
-These are the most coming zoning designations
-
-SOFIA - can you look up the top 10 of these and see what they actually mean in the code?
+These are the most common zoning designations
 
 ```{r}
 nash_venue_data %>%
@@ -1822,7 +1791,8 @@ nash_venue_data %>%
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
-   font_size = 18,full_width=F)
+   font_size = 18,full_width=F) %>% 
+ scroll_box(height = "200px")
 
 ```
 
@@ -1838,7 +1808,8 @@ nash_venue_data %>%
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
-   font_size = 18,full_width=F)
+   font_size = 18,full_width=F)  %>% 
+ scroll_box(height = "200px")
 
 ```
 
@@ -1886,7 +1857,8 @@ nash_venue_data %>%
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
-   font_size = 18,full_width=F)
+   font_size = 18,full_width=F)  %>% 
+ scroll_box(height = "200px")
 
 ```
 
@@ -1908,7 +1880,8 @@ nash_venue_data %>%
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
-   font_size = 18,full_width=F)
+   font_size = 18,full_width=F)  %>% 
+ scroll_box(height = "200px")
   
 
 ```
@@ -1930,7 +1903,8 @@ nash_venue_data %>%
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
-   font_size = 18,full_width=F)
+   font_size = 18,full_width=F)  %>% 
+ scroll_box(height = "200px")
 
 ```
 
@@ -1949,7 +1923,8 @@ nash_venue_data %>%
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
-   font_size = 18,full_width=F)
+   font_size = 18,full_width=F)  %>% 
+ scroll_box(height = "200px")
   
 ```
 
@@ -2088,7 +2063,8 @@ nash_venue_data %>%
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
-   font_size = 18,full_width=F)
+   font_size = 18,full_width=F)  %>% 
+ scroll_box(height = "200px")
 ```
 
 
@@ -2195,7 +2171,8 @@ risk_matrix %>%
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
-   font_size = 18,full_width=F)
+   font_size = 18,full_width=F)  %>% 
+ scroll_box(height = "200px")
 ```
 
 ```{r}
@@ -2222,7 +2199,7 @@ Here is an example - make a ggbasemap with a specific buffer area around the par
 
 ## 9.1. 3rd and Lindsley
 
-```{r}
+```{r eval = FALSE}
 base_map_3rd_and_lindsley <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(nash_venue_data %>%
                                                                                 filter(name == "3rd & Lindsley") %>%
                                                                                   st_as_sf(coords = c("x", "y"), crs = 4269) %>% st_transform(4326)),
@@ -2230,7 +2207,7 @@ base_map_3rd_and_lindsley <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_
                     force = TRUE, maptype = "toner-lite", zoom = 16)
 ```
 
-```{r}
+```{r eval = FALSE}
 ggmap(base_map_3rd_and_lindsley) +
  geom_sf(data = ll(nash_venue_data %>%
                      filter(name == "3rd & Lindsley") %>%
@@ -2247,7 +2224,7 @@ ggmap(base_map_3rd_and_lindsley) +
   mapTheme
 ```
 
-```{r}
+```{r eval = FALSE}
 ggmap(base_map_3rd_and_lindsley) +
  geom_sf(data = ll(right_join(parcels,
                              nash_venue_data %>%
@@ -2266,7 +2243,7 @@ ggmap(base_map_3rd_and_lindsley) +
 
 ## 9.2. Eastside Bowl
 
-```{r}
+```{r eval = FALSE}
 base_map_eastside_bowl <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(nash_venue_data %>%
                                                                                 filter(name == "Eastside Bowl") %>%
                                                                                   st_as_sf(coords = c("x", "y"), crs = 4269) %>% st_transform(4326)),
@@ -2274,7 +2251,7 @@ base_map_eastside_bowl <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_cen
                     force = TRUE, maptype = "toner-lite", zoom = 17)
 ```
 
-```{r}
+```{r eval = FALSE}
 ggmap(base_map_eastside_bowl) +
  geom_sf(data = ll(nash_venue_data %>%
                      filter(name == "Eastside Bowl") %>%
@@ -2291,7 +2268,7 @@ ggmap(base_map_eastside_bowl) +
   mapTheme
 ```
 
-```{r}
+```{r eval = FALSE}
 ggmap(base_map_eastside_bowl) +
  geom_sf(data = ll(right_join(parcels,
                              nash_venue_data %>%
@@ -2307,6 +2284,30 @@ ggmap(base_map_eastside_bowl) +
     caption = "Data: PennPraxis, Metro Nashville")+
   mapTheme
 ```
-- Broader context maps (e.g. whole city with venues and some basemap stuff?)
 
-- Area maps for any geographic focus (e.g. North Nashville)
+# 10. Admin
+
+NOTES AND TO-DO's:
+
+- Add section number references to takeaways, refine risk indicators if fire data come in.
+- Create graphics for each venue zoom in - see end of document - sect 9 The ggbasemap function is busted - this might have to do with rgdal being deprecated starting Oct 2023
+
+
+Unknown timeframe
+
+- Add capacity data and re-run data_markdown with "venue ladder" and cfp comparison (TBD - ??)
+- Render graphics for document
+- Create some general census maps, tables, figures to illustrate economic geography in Nashville and changes as needed in writing (Sofia) - Sect. 8.1.
+
+
+Recently finished:
+
+- Annotate maps and charts, to contain proper titles, axis titles, and styling (Sofia)
+- Associate license data with venues in a separate script (Sofia) - by 9/15
+- Fix some venue data points - before re-running with licenses (Michael): Nissan Stadium events/month, 3rd and Lindsley independence - DONE
+- Add property condition, year built, building use and other data in the data_markdown (Michael) DONE
+- Analyze recent sales values and impart risk scores (Michael) - DONE
+- Do some comparisons with CFP database (Michael) - DONE
+- k-means clustering (Michael)
+- Please double check the census data for Nashville (Sofia) - DONE - Michael 9/18
+
