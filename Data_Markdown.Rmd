@@ -1,7 +1,7 @@
 ---
 title: "Nasville Music Venues Research"
 author: "Sofia Fasullo & Michael Fichman"
-date: "2023-09-18"
+date: "2023-10-6"
 output: 
   html_document:
     theme: cosmo
@@ -217,20 +217,38 @@ venues_dist = st_join(venues, plan_dist %>%
 
 Fire department dataset cleaning
 
-MF - LET'S NOT RUN THIS UNTIL WE HAVE THE DATA WE NEED
-```{r eval = FALSE}
+MF - just updated this on 10/6 for new data
+```{r }
 ## load fire department data
-FD = read.csv("~/Github/Nashville_IMV/data/metro/Bars-&-Nightclubs-with-Occupant-Loads_2023-03-24_131105.csv")
+FD = read.csv("~/Github/Nashville_IMV/data/metro/fire_dept_oct_6_capacities.csv") %>%
+  mutate(Occ.Load = ifelse(Occ.Load == "283 (2 bldgs)", "283", Occ.Load),
+         Occ.Load = as.numeric(Occ.Load))
 
-#94 venues match, 198 venues of ours not represented inn FD, 162 FD not represented in venues
-venue_all_FD_data = left_join(venue_admin_key_table,FD,by= c("address_admin"="Location.Name","APN"="Location.Property.Tax.ID")) %>% unique()
+# Join the fire data by address_admin and name
+# Coerce Chamber data to numeric
+# Choose whichever capacity value is larger (the smaller values tend to look very wrong) in a column called Capacity
+# Rename the chamber capacity as "chamber_capacity", fire capacity as "fd_capacity"
+# Make a note which capacity we are using in a new colum called "capacity_source"
+venues_dist = left_join(venues_dist %>%
+                   mutate(capacity = ifelse(capacity %in% c("Null", ""), NA, capacity),
+                          capacity = as.numeric(gsub(",", "", capacity))), FD %>%
+                   select(address_admin, name, Occ.Load)) %>% 
+  rename(chamber_capacity = capacity,
+         fd_capacity = Occ.Load) %>%
+  mutate(Capacity = case_when(chamber_capacity >= fd_capacity ~ chamber_capacity,
+                              fd_capacity > chamber_capacity ~ fd_capacity,
+                              is.na(chamber_capacity) == TRUE & is.na(fd_capacity) == FALSE ~ fd_capacity,
+                              is.na(chamber_capacity) == FALSE & is.na(fd_capacity) == TRUE ~ chamber_capacity),
+         Capacity_source = case_when(chamber_capacity == Capacity ~ "Nash. Area Chamber of Commerce",
+                                     fd_capacity == Capacity ~ "Metro Nashville Fire Department",
+                                     is.na(Capacity) == TRUE ~ "No Data Available"))
 
 #variables_FD = c() #feel like all of them are useful
 
 #venue_select_parcel_data = venue_all_parcel_data %>% select(all_of(variables_parcels)) 
 
 ## FD data we want
-addresses_to_pull = venue_all_FD_data %>% filter(is.na(Location.Full.Address)) %>% select(name,APN,address_admin)
+#addresses_to_pull = venue_all_FD_data %>% filter(is.na(Location.Full.Address)) %>% select(name,APN,address_admin)
 ```
 
 
@@ -290,6 +308,20 @@ The zoning data have a lot of busted vertices - 19 features with invalid spheric
 zoning <- st_read("~/Github/Nashville_IMV/data/metro/Zoning/Zoning/Zoning_polygons.shp") %>% st_transform(4326)
 
 ```
+Analyze a bit about the zoning in general (considering moving this into the markdown)
+
+```{r}
+zoning %>%
+  st_make_valid() %>%
+  mutate(area_kmsq = as.numeric(st_area(.) / 1000)) %>%
+  as.data.frame() %>%
+  group_by(ZONE_DESC) %>%
+  summarize(tot_area_kmsq = sum(area_kmsq)) %>%
+  arrange(-tot_area_kmsq)
+
+```
+
+
 ```{r}
 venue_full <- st_join(venue_full %>%
                   as.data.frame() %>%
@@ -358,9 +390,9 @@ d1_aggregates = st_join(plan_dist, venue_full %>%
   group_by(Communit_1) %>% 
   summarize(num_venues = n(),
             num_music_smaces = sum(music_space_ord, na.rm = TRUE),
-            avg_capacity = mean(as.numeric(capacity),na.rm=TRUE),
-            median_capacity = median(as.numeric(capacity), na.rm = TRUE),
-            total_capacity = sum(as.numeric(capacity), na.rm = TRUE),
+            avg_capacity = mean(as.numeric(Capacity),na.rm=TRUE),
+            median_capacity = median(as.numeric(Capacity), na.rm = TRUE),
+            total_capacity = sum(as.numeric(Capacity), na.rm = TRUE),
             IMV_n = sum(IMV_ord,na.rm=TRUE),
             Quasi_IMV_n = sum(Quasi_IMV_ord,na.rm=TRUE),
             Non_IMV_n = sum(Non_IMV_ord,na.rm=TRUE),
@@ -464,9 +496,9 @@ venue_full <- venue_full %>%
 
 ```{r}
 
-st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v6.geojson")
+st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v7.geojson")
 
-st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v6.geojson")
+st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v7.geojson")
 
 ```
 
