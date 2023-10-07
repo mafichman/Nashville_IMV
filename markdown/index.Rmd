@@ -1,7 +1,7 @@
 ---
 title: "Nashville IMV Study Data - NOT FOR DISTRIBUTION"
 author: "Michael Fichman & Sofia Fasullo for PennPraxis"
-date: "10/4/2023"
+date: "10/7/2023"
 output:
   html_document:
     toc: yes
@@ -124,7 +124,7 @@ source("~/GitHub/CFP/unified__city_data/epsg_list.R")
 # LOAD IN THE NASH DATA
 
 # Read in district aggregates
-d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v6.geojson") %>%
+d1_aggregates_nash <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v7.geojson") %>%
   st_as_sf(crs = 4326) %>%
   rename(venue_count = num_venues,
          d1_name = Communit_1)
@@ -135,7 +135,7 @@ d2_aggregates_nash <- st_read("~/GitHub/CFP/unified__city_data/district_aggregat
 
 
 # Read in venues - THIS IS THE FILEPATH IN Data_Markdown.Rmd as of 9/19/2023
-nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v6.geojson") %>%
+nash_venue_data <- st_read("~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v7.geojson") %>%
   st_transform(crs = 4326) %>%
   group_by(name) %>%
   slice(1) %>%
@@ -158,7 +158,7 @@ st_transform(dat, proj4)
 ```
 
 ```{r message = FALSE, eval = FALSE}
-base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash), 1000)))),
+base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash), 10000)))),
                     force = TRUE, maptype = "toner-lite", zoom = 11)
 
 ```
@@ -194,6 +194,8 @@ Data governance and procedures related to live music, and government land and li
 - Researchers, community members, and focus group experts identified 253 spaces used for music in Nashville on a periodic or regular basis (Section 4). 113 of these were identified as being "Music Spaces", where music is likely to be the primary offer, and events are held more than once per week. The remainder (140) were considered "Occasional Music Spaces" (Section 4.1.2)
 
 - 24 of these Music Spaces (and 14 Occasional Music Spaces) were identified by researchers, community members, and focus group experts as likely to be IMVs (Completely independent ownership and operations). 49 Music Spaces were identified as being "Quasi-Independent" because some of their functions were assessed as likely to be contracted to corporate outside entities or they had legal ownership affiliations to other businesses. 40 Music Spaces were assessed as likely to be completely non-independent. 
+
+- Nashville has a healthy "venue ladder" - with a large number of smaller music spaces. The vast majority of these venues are either IMVs or Quasi-IMVs. Almost all IMVs are rooms below 250 person capacity, with a handful in the 250-500 and 500-1000 range. Non-Independents dominate the larger capacity ranges.
 
 ## 1.2. Community programming assessment
 
@@ -288,7 +290,7 @@ Searchable database
 
 ```{r}
 datatable(nash_venue_data, 
-          options = list(pageLength = 10))
+          options = list(pageLength = 10, scrollX='400px'))
 ```
 
 ## 4.1. Total number of venues
@@ -544,32 +546,49 @@ ggplot(data = nash_venue_data)+
 
 ### 4.4.1. Histogram of capacity
 
-NOTE - These data are not complete as of 9/5 - we are awaiting data from Nash FD - these are data from the Chamber's study several years ago and very incomplete
+We just got data from fire (10/6) - and this, when combined with the data from the Chamber, gets us a decent percentage of spaces.
 
-```{r community_histogram}
-ggplot(data = nash_venue_data %>%
-         mutate(capacity = as.numeric(capacity)) %>%
-         filter(capacity < 5000))+
-  geom_histogram(aes(capacity),fill=teal_light ,alpha = 0.6, binwidth = 250)+
-  #scale_fill_viridis_d()+
-  labs(
-    title = "Venue Capacity",
-    subtitle = "Capacities Over 5000 are removed",
-    x="",
-    y="Occupants",
-    #fill = "CFP City",
-    caption = "Data: Nashville Fire Dept")+
-  plotTheme
+How much NA data do we have? And where are the data sourced from?
+
+For some places we had data from both - and we chose the higher numbers (we found some of the obvious errors in the fire data to be on the low side - so this is how we worked around that).
+
+```{r}
+nash_venue_data %>%
+  group_by(Capacity_source) %>%
+  tally()
 
 ```
 
+```{r}
+nash_venue_data %>%
+  group_by(Capacity_source, music_space) %>%
+  tally()
+
+```
+
+```{r community_histogram}
+ggplot(data = nash_venue_data %>%
+         mutate(Capacity = as.numeric(Capacity)) %>%
+         filter(Capacity < 5000))+
+  geom_histogram(aes(Capacity),fill=teal_light ,alpha = 0.6, binwidth = 250)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Venue Capacity",
+    subtitle = "Capacities Over 5000 are removed, Data for 92 spaces unavailable",
+    x="",
+    y="Occupants",
+    #fill = "CFP City",
+    caption = "Data: Nashville Fire Dept, Greater Nashville Chamber of Commerce")+
+  plotTheme
+
+```
 ### 4.4.2. Capacity by IMV status
 
 ```{r}
 ggplot(data = nash_venue_data %>%
-         mutate(capacity = as.numeric(capacity)) %>%
-         filter(capacity < 5000) )+
-  geom_histogram(aes(capacity,fill=IMV), alpha = 0.6, binwidth = 250,show.legend = F)+
+         mutate(Capacity = as.numeric(Capacity)) %>%
+         filter(Capacity < 5000) )+
+  geom_histogram(aes(Capacity,fill=IMV), alpha = 0.6, binwidth = 250,show.legend = F)+
   scale_fill_manual(values=c(pink,indigo,teal_light))+
   labs(
     title = "Capacity",
@@ -577,21 +596,21 @@ ggplot(data = nash_venue_data %>%
     x="",
     y="Occupants",
     #fill = "CFP City",
-    caption = "Data: Nashville Fire Dept")+
+    caption = "Data: Nashville Fire Dept, Greater Nashville Chamber of Commerce")+
   facet_wrap(~IMV)+
   plotTheme
 ```
 
-There is still a ton of missing capacity data as of 8/16 - MF
 
 ```{r}
 nash_venue_data %>%
-         mutate(capacity = as.numeric(capacity)) %>%
+  filter(music_space == "Music Space") %>%
+         mutate(Capacity = as.numeric(Capacity)) %>%
   group_by(IMV) %>%
-  summarize(total_capacity = sum(capacity, na.rm = TRUE),
-            median_capacity = median(capacity, na.rm = TRUE)) %>%
+  summarize(median_capacity = median(Capacity, na.rm = TRUE),
+            mean_capacity = mean(Capacity, na.rm = TRUE)) %>%
   kable(
-    col.names = c("Independence Status","Gross Capacity", "Median Capacity")
+    col.names = c("Independence Status", "Median Capacity", "Average Capacity")
   ) %>% 
 kable_styling(bootstrap_options=c('striped','hover',
   'condensed','responsive'),position='center',
@@ -599,9 +618,91 @@ kable_styling(bootstrap_options=c('striped','hover',
 
 ```
 
-### 4.4.3. Geography of Occupancy
+```{r community_histogram}
+ggplot(data = nash_venue_data %>%
+         mutate(Capacity = as.numeric(Capacity)) %>%
+         filter(Capacity < 5000))+
+  geom_histogram(aes(Capacity, fill=IMV),alpha = 0.6, binwidth = 250)+
+  #scale_fill_viridis_d()+
+  labs(
+    title = "Venue Capacity",
+    subtitle = "Capacities Over 5000 are removed, Data for 92 spaces unavailable",
+    x="",
+    y="Occupants",
+    #fill = "CFP City",
+    caption = "Data: Nashville Fire Dept, Greater Nashville Chamber of Commerce")+
+  plotTheme
 
-- Map of occupancies (e.g. occupant load per fishnet cell or per planning area)
+```
+### 4.4.3. The "Venue Ladder"
+
+```{r}
+
+nash_venue_data %>%
+  filter(is.na(Capacity) == FALSE,
+         music_space == "Music Space") %>%
+  mutate(Capacity_category = case_when(Capacity < 251 ~ "1. 0-250",
+                                       Capacity > 250 &  Capacity < 501 ~ "2. 251-500",
+                                       Capacity > 500 &  Capacity < 1001 ~ "3. 501-1000",
+                                       Capacity > 1000 & Capacity < 5001 ~ "4. 1000-5000",
+                                       Capacity > 5000 ~ "5. 5000+")) %>%
+  ggplot()+
+  geom_bar(aes(Capacity_category, fill = Capacity_category), alpha = 0.6, size = 3,show.legend = F)+
+  scale_fill_manual(values=c(CityPalette[6],teal_light,teal,indigo,black))+
+  labs(
+    title = "Capacity - Nashville Music Spaces",
+    subtitle = "Capacity information missing for 24 of 113 music spaces",
+    x="Capacity",
+    y="Total Venues",
+    caption = "Data: Metro Nashville Fire Dept., Greater Nashville Chamber of Commerce")+
+  facet_wrap(~IMV)+
+  plotTheme
+
+```
+
+
+```{r}
+
+nash_venue_data %>%
+  filter(is.na(Capacity) == FALSE) %>%
+  mutate(Capacity_category = case_when(Capacity < 251 ~ "1. 0-250",
+                                       Capacity > 250 &  Capacity < 501 ~ "2. 251-500",
+                                       Capacity > 500 &  Capacity < 1001 ~ "3. 501-1000",
+                                       Capacity > 1000 & Capacity < 5001 ~ "4. 1000-5000",
+                                       Capacity > 5000 ~ "5. 5000+")) %>%
+  ggplot()+
+  geom_bar(aes(Capacity_category, fill = Capacity_category), alpha = 0.6, size = 3,show.legend = F)+
+  scale_fill_manual(values=c(CityPalette[6],teal_light,teal,indigo,black))+
+  facet_grid(music_space~IMV)+
+  labs(
+    title = "Capacity",
+    subtitle = "Capacity information missing for 92 of 253 venues",
+    x="Capacity",
+    y="Total Venues",
+    caption = "Data: Metro Nashville Fire Dept., Greater Nashville Chamber of Commerce")+
+  plotTheme
+
+```
+
+```{r}
+
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  filter(is.na(Capacity) == FALSE) %>%
+
+  mutate(Capacity_category = case_when(Capacity < 251 ~ "1. 0-250",
+                                       Capacity > 250 &  Capacity < 501 ~ "2. 251-500",
+                                       Capacity > 500 &  Capacity < 1001 ~ "3. 501-1000",
+                                       Capacity > 1000 & Capacity < 5001 ~ "4. 1000-5000",
+                                       Capacity > 5000 ~ "5. 5000+")) %>%
+    calculate_share(., "Capacity_category", "IMV") %>%
+  kable() %>%
+   kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',  font_size = 18,full_width=F)
+
+```
+
+
 
 ## 4.5. Venue Age
 
@@ -1795,6 +1896,60 @@ kable_styling(bootstrap_options=c('striped','hover',
  scroll_box(height = "200px")
 
 ```
+
+What is the relative amount of land for the top types of zoning and where are they located?
+
+```{r}
+zoning <- st_read("~/Github/Nashville_IMV/data/metro/Zoning/Zoning/Zoning_polygons.shp") %>% st_transform(4326)
+
+```
+
+How much total zoned land area is there?
+
+```{r}
+zoning %>%
+  st_make_valid() %>%
+  mutate(area_acres = as.numeric(st_area(.) *.0002))%>%
+  summarize(total_acres = sum(area_acres)) %>%
+  as.data.frame()
+
+
+```
+
+
+The top 10 categories where there are venues - where are these found?
+
+What percentage of the total developable land area does each district represent?
+
+```{r}
+nash_venue_data %>%
+  group_by(ZONE_DESC) %>%
+  tally() %>%
+  arrange(-n) %>%
+  slice(1:10) %>%
+left_join(.,
+zoning %>%
+  st_make_valid() %>%
+  mutate(area_acres = as.numeric(st_area(.) *.0002)) %>%
+  as.data.frame() %>%
+  group_by(ZONE_DESC) %>%
+  summarize(tot_area_acres = sum(area_acres)) %>%
+  mutate(pct_total_area = 100*(tot_area_acres/272017.3)))
+
+```
+
+What are the most populous zoning districts? (Not the ones you can put music in!)
+
+```{r}
+zoning %>%
+  st_make_valid() %>%
+  mutate(area_acres = as.numeric(st_area(.) *.0002)) %>%
+  as.data.frame() %>%
+  group_by(ZONE_DESC) %>%
+  summarize(tot_area_acres = sum(area_acres)) %>%
+  arrange(-tot_area_acres)
+```
+
 
 ## 6.3. Land Use
 

@@ -377,7 +377,7 @@ d1_aggregates = st_join(plan_dist, venue_full %>%
                                              Non_IMV_ord = 
                                                ifelse(music_space == "Music Space" &
                                                         IMV == "Non-Independent", 1, 0)) %>%
-                                      select(capacity,
+                                      select(Capacity,
                                              music_space_ord,
                                              IMV_ord,
                                              Quasi_IMV_ord,
@@ -496,7 +496,7 @@ venue_full <- venue_full %>%
 
 ```{r}
 
-st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v7.geojson")
+st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v8.geojson")
 
 st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v7.geojson")
 
