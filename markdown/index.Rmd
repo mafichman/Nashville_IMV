@@ -1,7 +1,7 @@
 ---
 title: "Nashville IMV Study Data - NOT FOR DISTRIBUTION"
 author: "Michael Fichman & Sofia Fasullo for PennPraxis"
-date: "10/7/2023"
+date: "10/19/2023"
 output:
   html_document:
     toc: yes
@@ -157,9 +157,9 @@ st_transform(dat, proj4)
 }
 ```
 
-```{r message = FALSE, eval = FALSE}
+```{r message = FALSE}
 base_map1 <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(d1_aggregates_nash), 10000)))),
-                    force = TRUE, maptype = "toner-lite", zoom = 11)
+                    force = TRUE, maptype = "toner-hybrid", zoom = 11)
 
 ```
 
@@ -345,14 +345,15 @@ ggplot()+
     geom_sf(data = d1_aggregates_nash,
           fill = '#f0f0f0', 
           color = 'white')+
-  geom_point(data = nash_venue_data,
+  geom_point(data = nash_venue_data %>%
+               mutate(music_space = ifelse(music_space == "Music Space", "Dedicated Music Space", music_space)),
              aes(x = x, y = y, color = music_space),
-             alpha = 0.3, size = 1)+
-  scale_color_manual(values=c(teal,pink))+
+             alpha = 0.4, size = 1)+
+  #scale_color_manual(values=c(teal,pink))+
   labs(
-    title = "Venue Density",
+    title = "Nashville Music Spaces",
     subtitle = "",
-    caption = "[data source]",
+    caption = "Data - PennPraxis, Metro Nashville, Nashville Area Chamber of Commerce",
     colour = "Space Type")+
   mapTheme
 ```
@@ -401,7 +402,7 @@ nash_venue_data %>%
   st_as_sf(coords = c("x","y"), 
            crs= 4326) %>%
   filter(music_space == "Music Space") %>%
-  select(name, address_admin, APN, IMV, ownership_structure, independent_booking, capacity, TotlAppr) %>%
+  select(name, address_admin, APN, IMV, ownership_structure, independent_booking, Capacity, TotlAppr) %>%
   mapView(., zcol = "IMV",layer.name="Music Venues", col.regions=c(pink,teal,indigo), legend=T)
 
 ```
@@ -457,8 +458,15 @@ ggplot()+
             filter(n_venues >0), 
           aes(fill = n_venues),
           color = "transparent",
-          alpha = 0.8)+
-  scale_fill_gradient2(low=beige,high=purple,midpoint=18,mid=pink,limits=c(1,max(fishnet$n_venues)), breaks=c(1, max(fishnet$n_venues)), labels=c("1",max(fishnet$n_venues)),name="# Venues in 1/2-mile")+
+          alpha = 0.7)+
+  scale_fill_viridis('Venue Density', direction = -1, 
+                     limits=c(1,max(fishnet$n_venues)),  
+                     #breaks=c(0,32), 
+                     alpha = 0.6,
+                     #labels=c("Minimum","Maximum"),
+                     breaks=c(1, max(fishnet$n_venues)), 
+                     labels=c("1",max(fishnet$n_venues)),
+                     name="# Venues in 1/2-mile")+
   labs(
     title = "VENUE DENSITY - Nashville, 2023",
     subtitle = "",
@@ -467,19 +475,31 @@ ggplot()+
 ```
 
 
-```{r, eval = FALSE}
+```{r}
 ggmap(base_map1) +
+ geom_sf(data = ll(st_union(d1_aggregates_nash)),
+         inherit.aes = FALSE,
+          fill = 'transparent', 
+          color = 'red',
+         alpha = 0.3)+
  geom_sf(data = ll(fishnet %>%
             filter(n_venues >0)),
             inherit.aes = TRUE,
           aes(fill = n_venues),
           color = "transparent",
-          alpha = 0.8)+
-  scale_fill_gradient2(low=beige,high=purple,midpoint=18,mid=pink,limits=c(1,max(fishnet$n_venues)), breaks=c(1, max(fishnet$n_venues)), labels=c("1",max(fishnet$n_venues)),name="# Venues in 1/2-mile")+
+          alpha = 0.7)+
+  scale_fill_viridis('Venue Density', direction = -1, 
+                     limits=c(1,max(fishnet$n_venues)),  
+                     #breaks=c(0,32), 
+                     alpha = 0.6,
+                     #labels=c("Minimum","Maximum"),
+                     breaks=c(1, max(fishnet$n_venues)), 
+                     labels=c("1",max(fishnet$n_venues)),
+                     name="# Venues in 1/2-mile")+
   labs(
-    title = "VENUE DENSITY - Nashville / Davidson County, 2023",
+    title = "Dedicated Music Spaces",
     subtitle = "",
-    caption = "Data: PennPraxis, Metro Nashville")+
+    caption = "Data: PennPraxis, Nashville Area Chamber of Commerce, Metro Nashville")+
   mapTheme
 ```
 
