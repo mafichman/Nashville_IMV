@@ -1496,7 +1496,8 @@ All music spaces
 
 ```{r}
 df = d1_aggregates_nash %>%
-            filter(is.na(num_music_smaces) == FALSE)
+            filter(is.na(num_music_smaces) == FALSE,
+                   num_music_smaces > 0)
 
 ggplot()+
   geom_sf(data = d1_aggregates_nash, fill = 'transparent', 
@@ -1504,7 +1505,10 @@ ggplot()+
   geom_sf(data=df, mapping=
           aes(fill = num_music_smaces),
           color = 'grey', alpha = 0.6)+
-  scale_fill_gradient2(low=beige,high=indigo,midpoint=c(20),mid=c(pink),limits=c(0,max(df$num_music_smaces)),breaks=c(0,5,20,max(df$num_music_smaces)), labels=c("0","5","20",max(df$num_music_smaces)),name="")+
+  scale_fill_viridis(direction = -1,
+                     limits=c(0,max(df$num_music_smaces)),
+                     breaks=c(0,5,20,max(df$num_music_smaces)), 
+                     labels=c("0","5","20",max(df$num_music_smaces)),name="")+
   geom_text(data = d1_aggregates_nash %>%
               filter(venue_count != 0) %>%
               mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
@@ -1516,7 +1520,7 @@ ggplot()+
     subtitle = '',
     x="",
     y='',
-    caption = "Data: PennPraxis")+
+    caption = "Data: PennPraxis, Metro Nashville, Nashville Area Chamber of Commerce")+
   mapTheme
 
 ```
@@ -1653,6 +1657,50 @@ ggplot(data = d1_aggregates_nash %>%
 
 ```{r}
 
+ggplot(data = nash_venue_data %>%
+          mutate(music_space_ord = ifelse(music_space == "Music Space", 1,0),
+                 IMV_ord = ifelse(music_space == "Music Space" &
+                                                        IMV == "Indep. Owned and Operated", 1, 0),
+                 Quasi_IMV_ord = ifelse(music_space == "Music Space" &
+                                                        IMV == "Quasi-independent", 1, 0),
+                  Non_IMV_ord = ifelse(music_space == "Music Space" &
+                                                        IMV == "Non-Independent", 1, 0)) %>%
+         group_by(Communit_1) %>% 
+         summarize(num_venues = n(),
+            num_music_spaces = sum(music_space_ord, na.rm = TRUE),
+            IMV_n = sum(IMV_ord,na.rm=TRUE),
+            Quasi_IMV_n = sum(Quasi_IMV_ord,na.rm=TRUE),
+            Non_IMV_n = sum(Non_IMV_ord,na.rm=TRUE),
+            interdisciplinarity = mean(interdisciplinarity_ord,na.rm=TRUE),
+            event_promotion = mean(event_promotion_ord,na.rm=TRUE),
+            community_focus = mean(community_focus_ord,na.rm=TRUE),
+            experimentation = mean(experimentation_ord,na.rm=TRUE)) %>%
+         filter(is.na(experimentation) == FALSE) %>%
+         as.data.frame() %>%
+         mutate(venue_text = str_c(as.character(num_music_spaces), " Dedicated Music Spaces")) %>%
+         select(venue_text, num_music_spaces, experimentation, Communit_1) %>%
+         arrange(-experimentation) %>%
+         top_n(10))+
+  geom_bar(aes(x = reorder(toupper(Communit_1), experimentation), 
+               y= experimentation),
+           stat = "identity", fill = CityPalette[6], width = 0.3,
+           alpha = 0.8)+
+  geom_text(aes(label = toupper(venue_text), x = toupper(Communit_1), 
+                y= experimentation / 2), alpha = 0.6, size = 4 )+
+  labs(
+    title = "DISTRICTS WITH HIGHEST EXPERIMENTAL CONTENT SCORES",
+    subtitle = "Dedicated music spaces only",
+    caption = "Data: PennPraxis")+
+  ylab("Mean Experimental Content Score (SCALE OF 1-4)")+
+  xlab("")+
+  coord_flip()+
+  plotTheme
+
+```
+
+
+```{r}
+
 ggplot(data = d1_aggregates_nash %>%
          filter(is.na(community_focus) == FALSE) %>%
          as.data.frame() %>%
@@ -1671,6 +1719,53 @@ ggplot(data = d1_aggregates_nash %>%
     #subtitle = "Labels indicate total number of districts in that ward",
     caption = "Data: PennPraxis")+
   ylab("MEAN COMMUNITY PROGRAM SCORE (SCALE OF 1-4)")+
+  xlab("")+
+  coord_flip()+
+  plotTheme
+
+```
+
+```{r}
+
+ggplot(data = nash_venue_data %>%
+          mutate(music_space_ord = ifelse(music_space == "Music Space", 1,0),
+                 IMV_ord = ifelse(music_space == "Music Space" &
+                                                        IMV == "Indep. Owned and Operated", 1, 0),
+                 Quasi_IMV_ord = ifelse(music_space == "Music Space" &
+                                                        IMV == "Quasi-independent", 1, 0),
+                  Non_IMV_ord = ifelse(music_space == "Music Space" &
+                                                        IMV == "Non-Independent", 1, 0)) %>%
+         group_by(Communit_1) %>% 
+         summarize(num_venues = n(),
+            num_music_spaces = sum(music_space_ord, na.rm = TRUE),
+            IMV_n = sum(IMV_ord,na.rm=TRUE),
+            Quasi_IMV_n = sum(Quasi_IMV_ord,na.rm=TRUE),
+            Non_IMV_n = sum(Non_IMV_ord,na.rm=TRUE),
+            interdisciplinarity = mean(interdisciplinarity_ord,na.rm=TRUE),
+            event_promotion = mean(event_promotion_ord,na.rm=TRUE),
+            community_focus = mean(community_focus_ord,na.rm=TRUE),
+            experimentation = mean(experimentation_ord,na.rm=TRUE)) %>%
+         filter(is.na(experimentation) == FALSE) %>%
+         as.data.frame() %>%
+         mutate(venue_text = str_c(as.character(num_music_spaces), " Dedicated Spaces")) %>%
+         select(venue_text, num_music_spaces, community_focus, Communit_1) %>%
+         arrange(-community_focus) %>%
+         top_n(10))+
+  geom_bar(aes(x = reorder(toupper(Communit_1), community_focus), 
+               y= community_focus),
+           stat = "identity", fill = CityPalette[6], width = 0.3,
+           alpha = 0.8)+
+  geom_text(aes(label = toupper(venue_text), x = toupper(Communit_1), 
+                y= community_focus / 2), alpha = 0.6, size = 4 )+
+  ylim(1,5)+
+  scale_y_continuous(
+  breaks = c(1, 2, 3, 4, 5),
+  labels = c("Not at all likely", "Not too likely", "Somewhat likely", "Very Likely", ""))+
+  labs(
+    title = "Community Focus- Average \nRatings by Community Planning Area \nDedicated Music Spaces Only",
+    subtitle = "Q: Is the venue likely to be any of the following... \na consistent platform for a niche genre, a space for underrepresented \ncommunities or music scenes, a neighbourhood community hub, \nand not walk-in tourists?",
+    caption = "Data: PennPraxis")+
+  ylab("Average Rating")+
   xlab("")+
   coord_flip()+
   plotTheme
@@ -1780,13 +1875,15 @@ nash_venue_data %>%
   ggplot()+
   geom_density(aes(centroid_dist, color = IMV),)+
   scale_color_manual(values=c(teal_light,pink,indigo))+
+  scale_y_continuous(breaks = c(0, .4),
+                     labels = c("Min", "Max"))+
   labs(
   title = "Distance from Nashville's Music Center",
-    subtitle = 'Comparing across independence status of venues',
-    x="Distance from Music Center (miles)",
-    y='Density of Venues',
-    color="Independence Status",
-    caption = "Data: PennPraxis")+
+    subtitle = 'Dedicated Music Spaces Only. \nNormalized Density represents the within-group density of each type',
+    x="Distance from Geographic Center of Venue Cluster (miles)",
+    y='Normalized Density of Venues',
+    color="IMV Status",
+    caption = "Data: PennPraxis, Nashville Metro, Nashville Area Chamber of Commerce")+
   plotTheme
 
 ```
@@ -1880,6 +1977,42 @@ kable_styling(bootstrap_options=c('striped','hover',
 
 ```
 
+Let's just look at dedicated music spaces
+
+```{r}
+#how to rename NAs?
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  group_by(BUSTYPE) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable(
+    col.names = c("Business Type","Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
+
+```
+
+OK now just IMVs
+
+```{r}
+#how to rename NAs?
+nash_venue_data %>%
+  filter(IMV == "Indep. Owned and Operated") %>%
+  group_by(BUSTYPE) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable(
+    col.names = c("Business Type","Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)
+
+```
+
 ```{r}
 nash_venue_data %>%
   filter(music_space == "Music Space") %>%
@@ -1916,6 +2049,43 @@ kable_styling(bootstrap_options=c('striped','hover',
  scroll_box(height = "200px")
 
 ```
+
+Let's look just at Dedicated Music Spaces - basically the same
+
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  group_by(ZONE_DESC) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable(
+    col.names = c("Zoning","Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F) %>% 
+ scroll_box(height = "200px")
+
+```
+Let's look just at IMVs
+
+```{r}
+nash_venue_data %>%
+  filter(IMV == "Indep. Owned and Operated") %>%
+  group_by(ZONE_DESC) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable(
+    col.names = c("Zoning","Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F) %>% 
+ scroll_box(height = "200px")
+
+```
+
 
 What is the relative amount of land for the top types of zoning and where are they located?
 
@@ -1973,8 +2143,46 @@ zoning %>%
 
 ## 6.3. Land Use
 
+All venues
+
 ```{r}
 nash_venue_data %>%
+  group_by(LUDesc) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable(
+    col.names = c("Land Use ","Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)  %>% 
+ scroll_box(height = "200px")
+
+```
+
+Dedicated music spaces
+
+```{r}
+nash_venue_data %>%
+  filter(music_space == "Music Space") %>%
+  group_by(LUDesc) %>%
+  tally() %>%
+  arrange(-n) %>%
+  kable(
+    col.names = c("Land Use ","Number of Venues")
+  ) %>% 
+kable_styling(bootstrap_options=c('striped','hover',
+  'condensed','responsive'),position='center',
+   font_size = 18,full_width=F)  %>% 
+ scroll_box(height = "200px")
+
+```
+
+IMVs only
+
+```{r}
+nash_venue_data %>%
+  filter(IMV == "Indep. Owned and Operated") %>%
   group_by(LUDesc) %>%
   tally() %>%
   arrange(-n) %>%
@@ -2171,23 +2379,63 @@ ggplot()+
           aes(fill = medianAppraisal),
           color = "transparent",
           alpha = 0.6)+
- scale_fill_gradient2(low=beige,high=indigo,midpoint=c(600),mid=c(pink),limits=c(0,max(na.omit(fishnet_parcels$medianAppraisal))),breaks=c(200,400,600,800), labels=c("200","400","600","800"),name="Price per Sq Foot")+
+scale_fill_viridis('Venue Density', direction = -1, 
+                    limits=c(0,max(na.omit(fishnet_parcels$medianAppraisal))),
+                    breaks=c(200,400,600,800), 
+                    labels=c("200","400","600","800"),
+                    name="Median $/sq ft")+
   geom_sf(data = d1_aggregates_nash %>%
             st_transform(4326), fill = "transparent")+
-  geom_point(data = nash_venue_data %>%
-         filter(music_space == "Music Space") %>%
-           filter(IMV == "Indep. Owned and Operated"),
-             aes(x = x, y = y),
-         color = teal,
-             size = 1.5,
-             alpha = 0.5,
-         show.legend = F)+
+ # geom_point(data = nash_venue_data %>%
+  #       filter(music_space == "Music Space") %>%
+  #         filter(IMV == "Indep. Owned and Operated"),
+  #           aes(x = x, y = y),
+   #      color = "red",
+  #           size = 1,
+   #          alpha = 0.3,
+    #     show.legend = F)+
   labs(
     title = "Median Appraised Value per Square Foot, Sales 2021-23",
     subtitle = "Half mile grid",
     caption = "Data: PennPraxis, Metro Nashville")+
   mapTheme
 ```
+
+```{r fishnet_map, warning = FALSE, message = FALSE}
+
+# Make sure you set the labels here to reflect the actual max density by cell
+
+max(fishnet_parcels$n_sales)
+
+ggplot()+
+  geom_sf(data = fishnet_parcels %>%
+            filter(is.na(n_sales) == FALSE,
+                   n_sales > 0), 
+          aes(fill = n_sales),
+          color = "transparent",
+          alpha = 0.6)+
+scale_fill_viridis(direction = -1, 
+                    limits=c(0,max(na.omit(fishnet_parcels$n_sales))),
+                   # breaks=c(200,400,600,800), 
+                   # labels=c("200","400","600","800"),
+                    name="Number of Prop. Transfers")+
+  geom_sf(data = d1_aggregates_nash %>%
+            st_transform(4326), fill = "transparent")+
+  geom_point(data = nash_venue_data %>%
+         filter(music_space == "Music Space") %>%
+           filter(IMV == "Indep. Owned and Operated"),
+             aes(x = x, y = y),
+         color = "red",
+             size = 1,
+             alpha = 0.2,
+         show.legend = F)+
+  labs(
+    title = "Sales intensity 2021-23",
+    subtitle = "Half mile grid",
+    caption = "Data: PennPraxis, Metro Nashville")+
+  mapTheme
+```
+
 
 ## 8.2.1. Venue exposure to real estate risk
 
@@ -2211,9 +2459,34 @@ nash_venue_data %>%
   labs(
   title = 'Building Value by Independence Status',
     subtitle = '',
-    x="Median Appraised Value",
-    y='Value per Sq Foot',
-    caption = "Data: PennPraxis")+
+    x="Median Appraised Value of Sales w/in Half-Mile ($/sqft)",
+    y='Venue Appraised Value ($/sqft)',
+    caption = "Data: PennPraxis, Metro Nashville")+
+  
+  plotTheme
+
+```
+
+```{r}
+nash_venue_data %>%
+  mutate(value_sqft = TotlAppr/Area_sqft) %>%
+  st_as_sf(coords = c("x", "y"), 
+                              crs = 4269) %>%
+                     st_transform(4326) %>%
+  st_join(., fishnet_parcels) %>%
+  filter(value_sqft < 1000 & value_sqft > 1) %>%
+  filter(music_space == "Music Space") %>%
+  ggplot()+
+  geom_histogram(aes(medianAppraisal/value_sqft), binwidth = .25)+
+  geom_vline(xintercept = 1, color ="red", alpha = 0.5)+
+  facet_wrap(~IMV)+
+  ylim(0,10)+
+  labs(
+  title = 'Assessed Value Relative to Recent, Nearby Sales',
+    subtitle = 'Dedicated Music Spaces Only - \nVenues to the right of the red line are assessed at lesser value than the median value of nearby sales 2021-2023',
+    x="Ratio of $/sqft appraisal of sales w/in 1/2 mile to venue $/sqft",
+    y='n venues',
+    caption = "Data: PennPraxis, Metro Nashville")+
   
   plotTheme
 
@@ -2329,6 +2602,16 @@ Risk exposure levels are relatively similar between venue types.
 ggplot(risk_matrix)+
   geom_histogram(aes(cumulative_risk), binwidth = 2)+
   facet_wrap(~IMV)+
+  ylim(0,15)+
+  scale_x_continuous(
+  breaks = c(6, 24),
+  labels = c("Lowest", "Highest"))+
+  labs(
+  title = 'Distribution of Economic Risk By Venue Type - \nDedicated Music Spaces Only',
+    subtitle = '',
+    x="Cumulative Risk",
+    y='Number of Venues',
+    caption = "Data: PennPraxis, Metro Nashville")+
   plotTheme
 
 ```
@@ -2374,28 +2657,29 @@ Here is an example - make a ggbasemap with a specific buffer area around the par
 
 ## 9.1. 3rd and Lindsley
 
-```{r eval = FALSE}
+```{r}
 base_map_3rd_and_lindsley <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(nash_venue_data %>%
                                                                                 filter(name == "3rd & Lindsley") %>%
                                                                                   st_as_sf(coords = c("x", "y"), crs = 4269) %>% st_transform(4326)),
                                                                   300)))),
-                    force = TRUE, maptype = "toner-lite", zoom = 16)
+                    force = TRUE, maptype = "toner-hybrid", zoom = 16)
 ```
 
-```{r eval = FALSE}
+```{r}
 ggmap(base_map_3rd_and_lindsley) +
  geom_sf(data = ll(nash_venue_data %>%
                      filter(name == "3rd & Lindsley") %>%
-                     st_as_sf(coords = c("x", "y"), 
-                              crs = 4269) %>%
+                     st_as_sf( crs = 4269) %>%
                      st_transform(4326)),
             inherit.aes = FALSE, 
-         color = "teal_light",
+         color = "red",
+         fill = "red",
+         alpha = 0.6,
          size = 2)+
   labs(
     title = "Focus Venue - 3rd and Lindsley",
     subtitle = "",
-    caption = "Data: PennPraxis, Metro Nashville")+
+    caption = "Data: PennPraxis, Metro Nashville, Open Street Map")+
   mapTheme
 ```
 
@@ -2418,43 +2702,73 @@ ggmap(base_map_3rd_and_lindsley) +
 
 ## 9.2. Eastside Bowl
 
-```{r eval = FALSE}
+```{r}
 base_map_eastside_bowl <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(nash_venue_data %>%
                                                                                 filter(name == "Eastside Bowl") %>%
                                                                                   st_as_sf(coords = c("x", "y"), crs = 4269) %>% st_transform(4326)),
-                                                                  300)))),
-                    force = TRUE, maptype = "toner-lite", zoom = 17)
+                                                                  800)))),
+                    force = TRUE, maptype = "toner-hybrid", zoom = 15)
 ```
 
 ```{r eval = FALSE}
 ggmap(base_map_eastside_bowl) +
  geom_sf(data = ll(nash_venue_data %>%
                      filter(name == "Eastside Bowl") %>%
-                     st_as_sf(coords = c("x", "y"), 
-                              crs = 4269) %>%
+                     st_as_sf( crs = 4269) %>%
                      st_transform(4326)),
             inherit.aes = FALSE, 
-         color = teal_light,
+         color = "red",
+         fill = "red",
+         alpha = 0.6,
          size = 2)+
   labs(
     title = "Focus Venue - Eastside Bowl",
     subtitle = "",
-    caption = "Data: PennPraxis, Metro Nashville")+
+    caption = "Data: PennPraxis, Metro Nashville, Open Street Map")+
+  mapTheme
+```
+
+
+## 9.2. Exit/In
+
+```{r}
+base_map_exit_in <-get_stamenmap(bbox = unname(st_bbox(ll(st_buffer(st_centroid(nash_venue_data %>%
+                                                                                filter(name == "EXIT/IN") %>%
+                                                                                  st_as_sf(coords = c("x", "y"), crs = 4269) %>% st_transform(4326)),
+                                                                  200)))),
+                    force = TRUE, maptype = "toner-hybrid", zoom = 16)
+```
+
+```{r}
+ggmap(base_map_exit_in) +
+ geom_sf(data = ll(nash_venue_data %>%
+                     filter(name == "EXIT/IN") %>%
+                     st_as_sf( crs = 4269) %>%
+                     st_transform(4326)),
+            inherit.aes = FALSE, 
+         color = "red",
+         fill = "red",
+         alpha = 0.6,
+         size = 2)+
+  labs(
+    title = "Focus Venue - Exit/In",
+    subtitle = "",
+    caption = "Data: PennPraxis, Metro Nashville, Open Street Map")+
   mapTheme
 ```
 
 ```{r eval = FALSE}
-ggmap(base_map_eastside_bowl) +
- geom_sf(data = ll(right_join(parcels,
-                             nash_venue_data %>%
-                     filter(name == "Eastside Bowl")) %>%
-                     st_transform(4326)),
+ggmap(base_map_exit_in) +
+ geom_sf(data = ll(nash_venue_data %>%
+                     filter(name == "EXIT/IN")) %>%
+           st_as_sf(crs = 4269) %>%
+                     st_transform(4326),
             inherit.aes = FALSE, 
-         color = indigo,
-         fill = teal_light,
+         color = "red",
+         fill = "red",
          alpha = 0.4)+
   labs(
-    title = "Focus Venue - Eastside Bowl",
+    title = "Focus Venue - Exit/In",
     subtitle = "",
     caption = "Data: PennPraxis, Metro Nashville")+
   mapTheme
