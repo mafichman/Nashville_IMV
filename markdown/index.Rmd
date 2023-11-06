@@ -1492,6 +1492,29 @@ nash_venue_data %>%
 
 ## 5.4.  Venues by planning area / neighborhood
 
+Map of Planning Area Boundaries
+
+```{r}
+ggplot()+
+  geom_sf(data = d1_aggregates_nash, fill= 'transparent',
+          color = 'grey')+
+  geom_text(data = d1_aggregates_nash %>%
+              mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+                     lat=map_dbl(geometry, ~st_centroid(.x)[[2]])),
+            aes(x = lon, y = lat, label = d1_name),
+            color = "black", size = 3)+
+   labs(
+    title = 'Community Planning Areas',
+    subtitle = '',
+    x="",
+    y='',
+    caption = "Data: Metro Nashville")+
+  mapTheme
+
+
+
+```
+
 All music spaces
 
 ```{r}
