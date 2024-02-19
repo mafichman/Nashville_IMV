@@ -1,7 +1,7 @@
 ---
 title: "Nasville Music Venues Research"
 author: "Sofia Fasullo & Michael Fichman"
-date: "2023-10-6"
+date: "2024-2-16"
 output: 
   html_document:
     theme: cosmo
@@ -9,6 +9,10 @@ output:
     toc_float: true
     code_folding: hide
 ---
+
+Data Routine to join cleaned venue data to municipal data, and  and aggregate/summarize by neighborhood units
+
+Last update - Feb 16, 2024
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -55,13 +59,17 @@ data_dictionary_view = t(data_dictionary_load) %>% as.data.frame() %>% mutate(co
 
 NOTE: possiblility to streamline this system in the future by reading .R files into this markdown rather than having all this code re-written
 
-Make a few quick data substitutions to reflect some changes in data set
+Make a few quick data substitutions to reflect some changes in data set.
+
+Includes changes on 2/16 for final report edit - changing city winery ownership structure to non-independent, removing Hi Watt (was not open at survey time)
 
 ```{r}
 
 venues <- venues %>%
   mutate(independent_booking = ifelse(name == "3rd & Lindsley", "3. Never", independent_booking),
-         events_per_month = ifelse(name == "Nissan Stadium", "1. 1-4 Events per month", events_per_month))
+         events_per_month = ifelse(name == "Nissan Stadium", "1. 1-4 Events per month", events_per_month),
+         ownership_structure = ifelse(name == "City Winery", "2. No", ownership_structure)) %>%
+  filter(str_detect(name, "High Watt") == FALSE)
 
 ```
 
@@ -496,9 +504,9 @@ venue_full <- venue_full %>%
 
 ```{r}
 
-st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v8.geojson")
+st_write(d1_aggregates, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/d1_aggregate_v9.geojson")
 
-st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v7.geojson")
+st_write(venue_full, "~/GitHub/Nashville_IMV/data/venue_tables/to_map/venues_v8.geojson")
 
 ```
 
